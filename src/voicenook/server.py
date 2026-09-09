@@ -1142,6 +1142,7 @@ async def poll_queue_for_chunks(output_queue, poll_interval=0.005, on_metric=Non
 
 @app.post("/v1/audio/speech")
 async def create_speech(request: SpeechRequest):
+    _touch_vox_activity()
     audio_format = (request.response_format or "wav").lower()
     validate_audio_format(audio_format)
 
