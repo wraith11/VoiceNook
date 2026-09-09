@@ -587,7 +587,8 @@ async function testVoice(name){
 async function loadLib(){
   try{
     const j=await(await fetch("/voices")).json();
-    const sys=j.system_voices||[], cus=j.custom_voices||[], det=j.custom_voice_details||{};
+    const sys=j.system_voices||[], cus=j.custom_voices||[];
+    const det=j.custom_voice_details||{}, desc=j.custom_voice_descriptions||{};
     const el=$("libList");
     if(!sys.length&&!cus.length){el.innerHTML='<p class="hint">'+(CFG.lang==="en"?"No voices yet.":"Keine Stimmen vorhanden.")+'</p>';return;}
     el.innerHTML="";
@@ -599,12 +600,25 @@ async function loadLib(){
     });
     cus.forEach(n=>{
       const d=document.createElement("div"); d.className="voice";
-      const rt=det[n]?"<div class='meta'>Reftext: "+esc(det[n])+"</div>":"";
-      d.innerHTML='<div><strong>'+n+'</strong> <span class="tag">Custom</span>'+rt+'</div>'+
+      // Higgs-Verfuegbarkeit: hat die Stimme eine .wav? (in voicesHg aus /higgs/api/voices)
+      const hasHiggs = (voicesHg||[]).indexOf(n)!==-1;
+      const higgsBadge = hasHiggs?"":'<span class="hibadge" title="'+(CFG.lang==="en"?"Not available in Higgs":"Nicht für Higgs verfügbar")+'">✕ Higgs</span>';
+      const curDesc = desc[n]||"";
+      d.innerHTML='<div style="display:flex;align-items:center;gap:.4rem"><strong>'+n+'</strong><span class="tag">Custom</span>'+higgsBadge+'</div>'+
+        '<div class="row" style="width:100%"><input type="text" class="libdesc" value="'+esc(curDesc)+'" placeholder="'+tr("desc_hint")+'">'+
+        '<button class="btn sec" onclick="saveDesc(\''+n+'\',this.previousElementSibling.value)">'+(CFG.lang==="en"?"Save":"Speichern")+'</button>'+
         '<button class="btn sec" onclick="testVoice(\''+n+'\')">'+(CFG.lang==="en"?"Test":"Testen")+'</button>'+
-        '<button class="btn danger" onclick="delVoice(\''+n+'\')">'+(CFG.lang==="en"?"Delete":"Löschen")+'</button>';
+        '<button class="btn danger" onclick="delVoice(\''+n+'\')">'+(CFG.lang==="en"?"Delete":"Löschen")+'</button></div>';
       el.appendChild(d);
     });
+  }catch(e){status(tr("error",{msg:e.message}),false);}
+}
+async function saveDesc(name,desc){
+  try{
+    const r=await fetch("/v1/voices/"+encodeURIComponent(name)+"/description",{method:"POST",
+      headers:{"Content-Type":"application/json"},body:JSON.stringify({description:desc||""})});
+    if(!r.ok)throw new Error((await r.json()).detail||r.statusText);
+    status(tr("desc_saved",{name}));
   }catch(e){status(tr("error",{msg:e.message}),false);}
 }
 async function delVoice(name){
