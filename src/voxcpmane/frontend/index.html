@@ -1,1437 +1,411 @@
-<!DOCTYPE html>
-<html lang="en">
+<!doctype html>
+<html lang="de">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ANE VoxCPM TTS Playground</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-        .spinner {
-            animation: spin 1s linear infinite;
-        }
-    </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VoiceNook</title>
+<style>
+  :root{--bg:#0f1218;--panel:#171c26;--panel2:#1d2431;--line:#2a3242;--txt:#e6ebf3;--mut:#9aa6b8;--acc:#4f8cff;--ok:#3fce7c;--err:#ff6b6b}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--txt)}
+  .wrap{max-width:980px;margin:0 auto;padding:1.2rem}
+  h1{font-size:1.3rem;margin:.2rem 0 1rem}
+  h3{font-size:.95rem;margin:0 0 .4rem}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:1rem;margin-bottom:1rem}
+  label{display:block;font-size:.8rem;color:var(--mut);margin:.6rem 0 .25rem}
+  textarea{width:100%;background:var(--panel2);color:var(--txt);border:1px solid var(--line);border-radius:8px;padding:.55rem;font-size:.95rem;resize:vertical}
+  textarea:disabled{opacity:.4}
+  input[type=text],input[type=number],select{background:var(--panel2);color:var(--txt);border:1px solid var(--line);border-radius:8px;padding:.55rem;font-size:.95rem}
+  input[type=file]{color:var(--mut);font-size:.85rem}
+  .row{display:flex;gap:.7rem;flex-wrap:wrap;align-items:center}
+  .row>.g{flex:1;min-width:200px}
+  .row>.g input[type=text],.row>.g input[type=number],.row>.g select{width:100%}
+  .btn{background:var(--acc);color:#fff;border:none;border-radius:8px;padding:.55rem 1rem;font-size:.95rem;cursor:pointer}
+  .btn:disabled{opacity:.4;cursor:not-allowed}
+  .btn.sec{background:var(--panel2);border:1px solid var(--line)}
+  .btn.danger{background:var(--err)}
+  .btn.ok{background:var(--ok);color:#0b1210}
+  .tag{display:inline-block;background:var(--panel2);border:1px solid var(--line);border-radius:5px;padding:.1rem .45rem;font-size:.72rem;margin:.15rem .1rem;color:var(--mut)}
+  #status{margin:.6rem 0;font-size:.88rem;min-height:1.2em}
+  .voice{display:flex;justify-content:space-between;align-items:center;gap:.6rem;padding:.5rem .4rem;border-bottom:1px solid var(--line);flex-wrap:wrap}
+  .voice:last-child{border-bottom:none}
+  .voice .meta{font-size:.78rem;color:var(--mut)}
+  .prog{display:none;height:6px;background:var(--panel2);border-radius:3px;overflow:hidden;margin-top:.5rem}
+  .prog>div{height:100%;width:0;background:var(--acc)}
+  .tabs{display:flex;gap:.4rem;margin-bottom:1rem;border-bottom:1px solid var(--line)}
+  .tab{background:var(--panel2);border:1px solid var(--line);border-bottom:none;border-radius:8px 8px 0 0;padding:.55rem 1.2rem;cursor:pointer;color:var(--mut);font-size:.95rem}
+  .tab.active{background:var(--acc);color:#fff;border-color:var(--acc)}
+  .pane{display:none}
+  .pane.active{display:block}
+  .tags{display:flex;flex-wrap:wrap;gap:.25rem;margin:.4rem 0}
+  .tags .cat{width:100%;font-size:.72rem;color:var(--mut);margin-top:.3rem}
+  .tags button{background:var(--panel2);color:#cfe0ff;border:1px solid var(--line);border-radius:6px;padding:.25rem .5rem;cursor:pointer;font-size:.72rem}
+  .tags button:hover{background:#3a4670}
+  details>summary{color:var(--mut);font-size:.8rem;cursor:pointer}
+</style>
 </head>
-<body class="bg-gray-900 text-gray-100 font-sans p-4 md:p-8">
+<body>
+<div class="wrap">
+  <h1>🎙️ VoiceNook</h1>
+  <div class="tabs">
+    <button class="tab active" id="tabVox">VoxCPM2</button>
+    <button class="tab" id="tabHiggs">Higgs v3</button>
+    <button class="tab" id="tabLib">Stimmen-Bibliothek</button>
+  </div>
+  <div id="status"></div>
 
-    <div class="max-w-2xl mx-auto">
-        <header class="mb-8">
-            <h1 class="text-4xl font-bold text-center text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-500">
-                ANE VoxCPM TTS Playground
-            </h1>
-        </header>
-
-        <!-- Tabs -->
-        <div class="flex space-x-1 rounded-xl bg-gray-800 p-1 mb-6">
-            <button id="tab-btn-generate" class="w-full rounded-lg py-2.5 text-sm font-medium leading-5 text-white ring-white ring-opacity-60 ring-offset-2 ring-offset-blue-400 focus:outline-none focus:ring-2 bg-gray-700 shadow text-purple-400 transition-all duration-200">
-                Generate Speech
-            </button>
-            <button id="tab-btn-create" class="w-full rounded-lg py-2.5 text-sm font-medium leading-5 text-gray-400 ring-white ring-opacity-60 ring-offset-2 ring-offset-blue-400 focus:outline-none focus:ring-2 hover:bg-gray-700/50 hover:text-white transition-all duration-200">
-                Create Voice
-            </button>
+  <!-- ============ VOXCPM2 ============ -->
+  <div class="pane active" id="paneVox">
+    <div class="card">
+      <label>Modus</label>
+      <select id="voxMode">
+        <option value="design">Voice Design (nur Beschreibung)</option>
+        <option value="ref">Clone (Reference + Beschreibung)</option>
+        <option value="high">Clone (High similarity, ohne Beschreibung)</option>
+      </select>
+      <label>Stimmbeschreibung (Englisch)</label>
+      <textarea id="desc" rows="2" placeholder="A warm, calm male voice, slightly smiling, medium pace"></textarea>
+      <div id="voiceRow" style="display:none"><label>Stimme</label><select id="voiceSel"></select></div>
+      <label>Text</label>
+      <textarea id="text" rows="3" placeholder="Hallo und herzlich willkommen!"></textarea>
+      <details style="margin-top:.6rem">
+        <summary>Erweitert</summary>
+        <div class="row" style="margin-top:.4rem">
+          <div class="g"><label>cfg_value</label><input type="number" id="cfg" value="2.0" step="0.1"></div>
+          <div class="g"><label>inference_timesteps</label><input type="number" id="steps" value="20"></div>
+          <div class="g"><label>Seed (leer = zufällig)</label><input type="text" id="seed" placeholder=""></div>
         </div>
-
-        <div id="status-message" class="hidden p-4 rounded-lg mb-6 text-center"></div>
-
-        <!-- GENERATE TAB -->
-        <div id="tab-content-generate">
-            <form id="tts-form" class="space-y-6 bg-gray-800 p-6 rounded-xl shadow-2xl">
-
-                <div>
-                    <label for="text-input" class="block text-sm font-medium text-gray-300 mb-2">
-                        Text to Generate
-                    </label>
-                    <textarea id="text-input" rows="4" class="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition" placeholder="Enter text to synthesize...">Jittery Jack's jam jars jiggled jauntily, jolting Jack's jumbled jelly-filled jars joyously.
-Cindy's circular cymbals clanged cheerfully, clashing crazily near Carla's crashing crockery.
-You think you can just waltz in here and cause chaos? Well, I've got news for you.</textarea>
-                </div>
-
-                <div>
-                    <label for="voice-select" class="flex items-center text-sm font-medium text-gray-300 mb-2">
-                        <span>Voice Selection (Optional)</span>
-                        <a href="https://gregr.org/tts-samples/" target="_blank" rel="noopener noreferrer" class="ml-2 text-sm text-purple-400 hover:text-purple-300 transition-colors">
-                            (See Samples)
-                        </a>
-                    </label>
-                    <div class="flex gap-3">
-                        <select id="voice-select" class="flex-1 min-w-0 p-3 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition">
-                            <option value="">Manual prompt / zero-shot</option>
-                        </select>
-                        <button type="button" id="delete-voice-button" class="px-4 py-3 bg-red-700 text-white font-semibold rounded-lg shadow-lg hover:bg-red-800 transition duration-300 disabled:opacity-40 disabled:cursor-not-allowed" disabled>
-                            Delete
-                        </button>
-                    </div>
-                    <div id="voice-status" class="mt-2 text-sm text-gray-400"></div>
-                </div>
-
-                <div id="voice-mode-section" class="hidden">
-                    <label for="voice-mode" class="block text-sm font-medium text-gray-300 mb-2">
-                        Preset Voice Mode
-                    </label>
-                    <select id="voice-mode" class="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition">
-                        <option value="reference">Reference only (lower latency)</option>
-                        <option value="reference_plus_prompt">Reference + prompt WAV/text</option>
-                        <option value="high_similarity">High similarity (uses transcript)</option>
-                    </select>
-                    <div class="mt-1 text-xs text-gray-500">Reference + prompt uses the selected voice as reference and the prompt WAV/text as continuation. High similarity uses cached prompt data when available.</div>
-                </div>
-
-                <div id="reference-section">
-                    <label for="reference-wav-path" class="flex items-center text-sm font-medium text-gray-300 mb-2">
-                        <span>Reference WAV Path (Optional)</span>
-                        <div class="relative group ml-2">
-                            <span class="w-4 h-4 flex items-center justify-center bg-gray-600 text-gray-300 text-xs font-bold rounded-full cursor-help">?</span>
-                            <div class="absolute hidden group-hover:block left-full ml-3 top-1/2 -translate-y-1/2 w-72 p-3 bg-black text-white text-sm rounded-lg shadow-lg z-10 transition-all duration-150 ease-in-out opacity-0 group-hover:opacity-100 pointer-events-none">
-                                Encoded as an isolated voice reference with reference-audio boundary tokens.
-                            </div>
-                        </div>
-                    </label>
-                    <input type="text" id="reference-wav-path" value="" class="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition" placeholder="/path/to/reference.wav">
-                </div>
-
-                <div id="prompt-section">
-                    <label for="prompt-wav-path" class="flex items-center text-sm font-medium text-gray-300 mb-2">
-                        <span>Prompt WAV Path (Optional Continuation)</span>
-                        <div class="relative group ml-2">
-                            <span class="w-4 h-4 flex items-center justify-center bg-gray-600 text-gray-300 text-xs font-bold rounded-full cursor-help">?</span>
-                            <div class="absolute hidden group-hover:block left-full ml-3 top-1/2 -translate-y-1/2 w-72 p-3 bg-black text-white text-sm rounded-lg shadow-lg z-10 transition-all duration-150 ease-in-out opacity-0 group-hover:opacity-100 pointer-events-none">
-                                Appended after the text span as continuation audio. Pair it with the matching prompt text.
-                            </div>
-                        </div>
-                    </label>
-                    <input type="text" id="prompt-wav-path" value="" class="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition" placeholder="/path/to/prompt.wav">
-                </div>
-
-                <div id="prompt-text-section">
-                    <label for="prompt-text" class="flex items-center text-sm font-medium text-gray-300 mb-2">
-                        <span>Prompt Text (Required when using prompt WAV)</span>
-                        
-                        <div class="relative group ml-2">
-                            <span class="w-4 h-4 flex items-center justify-center bg-gray-600 text-gray-300 text-xs font-bold rounded-full cursor-help">?</span>
-                            <div class="absolute hidden group-hover:block left-full ml-3 top-1/2 -translate-y-1/2 w-72 p-3 bg-black text-white text-sm rounded-lg shadow-lg z-10 transition-all duration-150 ease-in-out opacity-0 group-hover:opacity-100 pointer-events-none">
-                                This text is transcribed from the 'Prompt WAV' and is used to condition the model on the voice's acoustic properties. It <strong>must</strong> be an accurate transcription of the prompt audio.
-                            </div>
-                        </div>
-                        </label>
-                    <textarea id="prompt-text" rows="2" class="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition" placeholder="Not required if using a provided voice"></textarea>
-                </div>
-
-                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    <div class="flex flex-col">
-                        <label for="max-length" class="flex items-start text-sm font-medium text-gray-300 mb-2 md:min-h-[2.75rem]">
-                            Max Length (~0.16s per unit)
-                        </label>
-                        <input type="number" id="max-length" value="2048" min="1" class="w-full h-12 p-3 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition">
-                        <div class="mt-1 text-xs text-gray-500">Maximum generated audio steps (limited by LM cache)</div>
-                    </div>
-                    <div class="flex flex-col">
-                        <label for="cfg-value" class="flex items-start text-sm font-medium text-gray-300 mb-2 md:min-h-[2.75rem]">
-                            CFG Value
-                        </label>
-                        <input type="number" id="cfg-value" value="2.0" min="0.0" max="10.0" step="0.1" class="w-full h-12 p-3 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition">
-                        <div class="mt-1 text-xs text-gray-500">Classifier-free guidance value (0.0-10.0)</div>
-                    </div>
-                    <div class="flex flex-col">
-                        <label for="inference-timesteps" class="flex items-start text-sm font-medium text-gray-300 mb-2 md:min-h-[2.75rem]">
-                            <span>Inference Timesteps</span>
-
-                            <div class="relative group ml-2">
-                                <span class="w-4 h-4 flex items-center justify-center bg-gray-600 text-gray-300 text-xs font-bold rounded-full cursor-help">?</span>
-                                <div class="absolute hidden group-hover:block left-full ml-3 top-1/2 -translate-y-1/2 w-72 p-3 bg-black text-white text-sm rounded-lg shadow-lg z-10 transition-all duration-150 ease-in-out opacity-0 group-hover:opacity-100 pointer-events-none">
-                                    Controls the number of diffusion steps. A higher number (e.g., 20) is slower but may increase quality. A lower number (e.g., 5-10) is faster. This model works well with 10.
-                                </div>
-                            </div>
-                        </label>
-                        <input type="number" id="inference-timesteps" value="10" min="1" max="100" class="w-full h-12 p-3 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition">
-                        <div class="mt-1 text-xs text-gray-500">Number of inference steps (1-100)</div>
-                    </div>
-                    <div class="flex flex-col">
-                        <label for="seed" class="flex items-start text-sm font-medium text-gray-300 mb-2 md:min-h-[2.75rem]">
-                            <span>Seed</span>
-
-                            <div class="relative group ml-2">
-                                <span class="w-4 h-4 flex items-center justify-center bg-gray-600 text-gray-300 text-xs font-bold rounded-full cursor-help">?</span>
-                                <div class="absolute hidden group-hover:block left-full ml-3 top-1/2 -translate-y-1/2 w-72 p-3 bg-black text-white text-sm rounded-lg shadow-lg z-10 transition-all duration-150 ease-in-out opacity-0 group-hover:opacity-100 pointer-events-none">
-                                    Leave blank for a fresh random voice each request. Set a number to reproduce the same diffusion noise.
-                                </div>
-                            </div>
-                        </label>
-                        <input type="number" id="seed" value="" min="0" step="1" class="w-full h-12 p-3 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition" placeholder="Random">
-                        <div class="mt-1 text-xs text-gray-500">Optional reproducibility seed</div>
-                    </div>
-                </div>
-
-                <div class="flex flex-col sm:flex-row gap-4">
-                    <button type="submit" id="play-button" class="flex-1 flex items-center justify-center gap-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold py-3 px-6 rounded-lg shadow-lg hover:from-purple-700 hover:to-pink-700 transition duration-300 disabled:opacity-50 disabled:cursor-not-allowed">
-                        <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"></path></svg>
-                        <span id="play-button-text">Generate & Play</span>
-                        <div id="spinner" class="hidden spinner w-5 h-5 border-t-2 border-b-2 border-white rounded-full"></div>
-                    </button>
-
-                    <button type="button" id="generate-full-button" class="flex-1 flex items-center justify-center gap-2 bg-blue-600 text-white font-bold py-3 px-6 rounded-lg shadow-lg hover:bg-blue-700 transition duration-300 disabled:opacity-50 disabled:cursor-not-allowed">
-                        <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 9.293a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd"></path></svg>
-                        <span id="generate-full-button-text">Generate Full Audio</span>
-                        <div id="generate-full-spinner" class="hidden spinner w-5 h-5 border-t-2 border-b-2 border-white rounded-full"></div>
-                    </button>
-                    <button type="button" id="pause-playback-button" class="flex-1 bg-amber-600 text-white font-bold py-3 px-6 rounded-lg shadow-lg hover:bg-amber-700 transition duration-300 disabled:opacity-50 disabled:cursor-not-allowed" disabled>
-                        Pause Playback
-                    </button>
-                    <button type="button" id="stop-button" class="flex-1 bg-gray-600 text-gray-200 font-bold py-3 px-6 rounded-lg shadow-lg hover:bg-gray-500 transition duration-300 disabled:opacity-50 disabled:cursor-not-allowed" disabled>
-                        Stop Generation
-                    </button>
-                </div>
-            </form>
-
-            <div id="audio-player-container" class="hidden mt-6 bg-gray-800 p-4 rounded-xl shadow-2xl">
-                <label class="block text-sm font-medium text-gray-300 mb-3">
-                    Full Audio Playback
-                </label>
-                <audio id="audio-player" controls class="w-full"></audio>
-            </div>
-        </div>
-
-        <!-- CREATE VOICE TAB -->
-        <div id="tab-content-create" class="hidden">
-            <form id="create-voice-form" class="space-y-6 bg-gray-800 p-6 rounded-xl shadow-2xl">
-                <div>
-                    <h2 class="text-xl font-semibold mb-4 text-purple-400">Create New Cached Voice</h2>
-                    <p class="text-sm text-gray-400 mb-6">Compile a reference audio file into a reusable voice cache. Files must exist on the server.</p>
-                </div>
-
-                <div>
-                    <label for="new-voice-name" class="block text-sm font-medium text-gray-300 mb-2">
-                        Voice Name
-                    </label>
-                    <input type="text" id="new-voice-name" class="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition" placeholder="my-custom-voice" required>
-                </div>
-
-                <div>
-                    <label for="new-voice-audio" class="block text-sm font-medium text-gray-300 mb-2">
-                        Reference Audio Path (Server)
-                    </label>
-                    <input type="text" id="new-voice-audio" class="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition" placeholder="/path/to/audio.wav (or .mp3, .flac...)" required>
-                </div>
-
-                <div>
-                    <label for="new-voice-text" class="block text-sm font-medium text-gray-300 mb-2">
-                        Prompt Transcription (Optional)
-                    </label>
-                    <textarea id="new-voice-text" rows="3" class="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition" placeholder="Optional exact transcript, or /path/to/transcript.txt for higher-similarity continuation cloning"></textarea>
-                </div>
-
-                <div>
-                    <label class="flex items-center space-x-3">
-                        <input type="checkbox" id="new-voice-replace" class="form-checkbox h-5 w-5 text-purple-600 rounded focus:ring-purple-500 bg-gray-700 border-gray-600">
-                        <span class="text-gray-300 font-medium">Replace if exists</span>
-                    </label>
-                </div>
-
-                <button type="submit" id="create-voice-btn" class="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-green-600 to-teal-600 text-white font-bold py-3 px-6 rounded-lg shadow-lg hover:from-green-700 hover:to-teal-700 transition duration-300">
-                    <span id="create-voice-btn-text">Create Voice</span>
-                    <div id="create-voice-spinner" class="hidden spinner w-5 h-5 border-t-2 border-b-2 border-white rounded-full"></div>
-                </button>
-            </form>
-        </div>
-
+      </details>
+      <div class="row" style="margin-top:.8rem">
+        <button class="btn" id="genBtn">Synthetisieren</button>
+        <button class="btn sec" id="stopBtn">Stopp</button>
+      </div>
+      <div class="prog" id="prog"><div></div></div>
     </div>
-
-    <script>
-        // --- DOM Elements ---
-        const ttsForm = document.getElementById('tts-form');
-        const playButton = document.getElementById('play-button');
-        const playButtonText = document.getElementById('play-button-text');
-        const pausePlaybackButton = document.getElementById('pause-playback-button');
-        const stopButton = document.getElementById('stop-button');
-        const spinner = document.getElementById('spinner');
-        const statusMessage = document.getElementById('status-message');
-
-        const textInput = document.getElementById('text-input');
-        const promptTextInput = document.getElementById('prompt-text');
-        const promptWavPathInput = document.getElementById('prompt-wav-path');
-        const referenceWavPathInput = document.getElementById('reference-wav-path');
-        
-        // --- Voice Selection Elements ---
-        const voiceSelect = document.getElementById('voice-select');
-        const voiceModeSection = document.getElementById('voice-mode-section');
-        const voiceModeSelect = document.getElementById('voice-mode');
-        const deleteVoiceButton = document.getElementById('delete-voice-button');
-        const voiceStatus = document.getElementById('voice-status');
-        const referenceSection = document.getElementById('reference-section');
-        const promptSection = document.getElementById('prompt-section');
-        const promptTextSection = document.getElementById('prompt-text-section');
-        
-        // --- Parameter Elements ---
-        const maxLengthInput = document.getElementById('max-length');
-        const cfgValueInput = document.getElementById('cfg-value');
-        const inferenceTimestepsInput = document.getElementById('inference-timesteps');
-        const seedInput = document.getElementById('seed');
-        
-        // --- Audio Player Elements ---
-        const audioPlayerContainer = document.getElementById('audio-player-container');
-        const audioPlayer = document.getElementById('audio-player');
-        
-        // --- Full Generation Button Elements ---
-        const generateFullButton = document.getElementById('generate-full-button');
-        const generateFullButtonText = document.getElementById('generate-full-button-text');
-        const generateFullSpinner = document.getElementById('generate-full-spinner');
-
-        // --- Tabs Elements ---
-        const tabBtnGenerate = document.getElementById('tab-btn-generate');
-        const tabBtnCreate = document.getElementById('tab-btn-create');
-        const tabContentGenerate = document.getElementById('tab-content-generate');
-        const tabContentCreate = document.getElementById('tab-content-create');
-
-        // --- Create Voice Elements ---
-        const createVoiceForm = document.getElementById('create-voice-form');
-        const createVoiceBtn = document.getElementById('create-voice-btn');
-        const createVoiceBtnText = document.getElementById('create-voice-btn-text');
-        const createVoiceSpinner = document.getElementById('create-voice-spinner');
-        const newVoiceNameInput = document.getElementById('new-voice-name');
-        const newVoiceAudioInput = document.getElementById('new-voice-audio');
-        const newVoiceTextInput = document.getElementById('new-voice-text');
-        const newVoiceReplaceCheckbox = document.getElementById('new-voice-replace');
-
-        // --- AudioContext Variables ---
-        let audioContext;
-        let streamReader;
-        let nextStartTime = 0; // Time at which the next audio chunk should start playing
-        let isPlaying = false;
-        let sampleRate = 48000; // Default, will try to get from header
-        let streamQueue = [];
-        let queuedAudioDuration = 0;
-        let streamEnded = false;
-        let playbackStarted = false;
-        let schedulerTimer = null;
-        let pendingPcmBytes = new Uint8Array(0);
-        let fadeInNextChunk = false;
-        let pendingSamples = new Float32Array(0);
-        let streamPlayerNode = null;
-        let useAudioWorkletPlayback = false;
-        let streamPlayerEndSent = false;
-        let streamPlayerModuleUrl = null;
-        let streamPlaybackPaused = false;
-        let streamFinishTimer = null;
-
-        const INITIAL_STREAM_BUFFER_SECONDS = 0.6;
-        const TARGET_SCHEDULE_AHEAD_SECONDS = 1.2;
-        const RESTART_DELAY_SECONDS = 0.08;
-        const FADE_SECONDS = 0.005;
-        let customVoices = new Set();
-        
-        // --- Array to store audio chunks for final playback ---
-        let audioChunks = [];
-
-        // --- Tab Switching Logic ---
-        function switchTab(tab) {
-            hideStatus();
-            if (tab === 'generate') {
-                tabContentGenerate.classList.remove('hidden');
-                tabContentCreate.classList.add('hidden');
-
-                tabBtnGenerate.className = "w-full rounded-lg py-2.5 text-sm font-medium leading-5 text-white ring-white ring-opacity-60 ring-offset-2 ring-offset-blue-400 focus:outline-none focus:ring-2 bg-gray-700 shadow text-purple-400 transition-all duration-200";
-                tabBtnCreate.className = "w-full rounded-lg py-2.5 text-sm font-medium leading-5 text-gray-400 ring-white ring-opacity-60 ring-offset-2 ring-offset-blue-400 focus:outline-none focus:ring-2 hover:bg-gray-700/50 hover:text-white transition-all duration-200";
-            } else {
-                tabContentGenerate.classList.add('hidden');
-                tabContentCreate.classList.remove('hidden');
-
-                tabBtnCreate.className = "w-full rounded-lg py-2.5 text-sm font-medium leading-5 text-white ring-white ring-opacity-60 ring-offset-2 ring-offset-blue-400 focus:outline-none focus:ring-2 bg-gray-700 shadow text-purple-400 transition-all duration-200";
-                tabBtnGenerate.className = "w-full rounded-lg py-2.5 text-sm font-medium leading-5 text-gray-400 ring-white ring-opacity-60 ring-offset-2 ring-offset-blue-400 focus:outline-none focus:ring-2 hover:bg-gray-700/50 hover:text-white transition-all duration-200";
-            }
-        }
-
-        tabBtnGenerate.addEventListener('click', () => switchTab('generate'));
-        tabBtnCreate.addEventListener('click', () => switchTab('create'));
-
-        // --- Load available voices on page load ---
-        async function loadAvailableVoices() {
-            try {
-                const previousVoice = voiceSelect.value;
-                const response = await fetch('/voices');
-                const data = await response.json();
-                customVoices = new Set(data.custom_voices || []);
-                
-                // Clear existing options except the first one
-                voiceSelect.innerHTML = '<option value="">Manual prompt / zero-shot</option>';
-                
-                // Add voice options
-                data.voices.forEach(voice => {
-                    const option = document.createElement('option');
-                    option.value = voice;
-                    option.textContent = voice;
-                    if (customVoices.has(voice)) {
-                        option.textContent = `${voice} (custom)`;
-                    }
-                    voiceSelect.appendChild(option);
-                });
-
-                if ([...voiceSelect.options].some(option => option.value === previousVoice)) {
-                    voiceSelect.value = previousVoice;
-                }
-                
-                voiceStatus.textContent = `Found ${data.count} available voices`;
-                voiceStatus.className = 'mt-2 text-sm text-green-400';
-                updateVoiceSelectionState({ preserveEmptyStatus: true });
-                
-            } catch (error) {
-                console.error('Error loading voices:', error);
-                voiceStatus.textContent = 'Failed to load available voices';
-                voiceStatus.className = 'mt-2 text-sm text-red-400';
-                deleteVoiceButton.disabled = true;
-            }
-        }
-
-        function updateVoiceSelectionState({ preserveEmptyStatus = false } = {}) {
-            const selectedVoice = voiceSelect.value;
-            const isCustomVoice = customVoices.has(selectedVoice);
-            const mode = voiceModeSelect.value;
-            const showPromptFields = selectedVoice && mode === 'reference_plus_prompt';
-            deleteVoiceButton.disabled = !isCustomVoice;
-
-            if (selectedVoice) {
-                voiceModeSection.classList.remove('hidden');
-                referenceSection.style.display = 'none';
-                promptSection.style.display = showPromptFields ? 'block' : 'none';
-                promptTextSection.style.display = showPromptFields ? 'block' : 'none';
-                voiceStatus.textContent = isCustomVoice
-                    ? `Using custom voice: ${selectedVoice}`
-                    : `Using cached voice: ${selectedVoice}`;
-                voiceStatus.className = 'mt-2 text-sm text-blue-400';
-            } else {
-                voiceModeSection.classList.add('hidden');
-                referenceSection.style.display = 'block';
-                promptSection.style.display = 'block';
-                promptTextSection.style.display = 'block';
-                if (!preserveEmptyStatus) {
-                    voiceStatus.textContent = 'Using manual prompt/reference fields';
-                    voiceStatus.className = 'mt-2 text-sm text-gray-400';
-                }
-            }
-        }
-
-        // --- Handle voice selection changes ---
-        voiceSelect.addEventListener('change', updateVoiceSelectionState);
-        voiceModeSelect.addEventListener('change', updateVoiceSelectionState);
-
-        deleteVoiceButton.addEventListener('click', async () => {
-            const selectedVoice = voiceSelect.value;
-            if (!customVoices.has(selectedVoice)) {
-                return;
-            }
-            if (!confirm(`Delete custom voice "${selectedVoice}"?`)) {
-                return;
-            }
-
-            deleteVoiceButton.disabled = true;
-            const originalText = deleteVoiceButton.textContent;
-            deleteVoiceButton.textContent = 'Deleting...';
-
-            try {
-                const response = await fetch(`/v1/voices/${encodeURIComponent(selectedVoice)}`, {
-                    method: 'DELETE'
-                });
-                const result = await response.json();
-                if (!response.ok) {
-                    throw new Error(result.detail || 'Failed to delete voice');
-                }
-
-                voiceSelect.value = '';
-                await loadAvailableVoices();
-                showStatus(`Voice '${selectedVoice}' deleted.`, 'success');
-            } catch (error) {
-                console.error('Delete voice error:', error);
-                showStatus(`Error deleting voice: ${error.message}`, 'error');
-                updateVoiceSelectionState();
-            } finally {
-                deleteVoiceButton.textContent = originalText;
-            }
-        });
-
-        // --- Load voices when page loads ---
-        loadAvailableVoices();
-
-        pausePlaybackButton.addEventListener('click', toggleStreamPlaybackPause);
-
-        // --- Utility to show status messages ---
-        function showStatus(message, type = 'info') {
-            statusMessage.textContent = message;
-            statusMessage.className = 'p-4 rounded-lg mb-6 text-center '; // Reset classes
-            
-            if (type === 'error') {
-                statusMessage.classList.add('bg-red-800', 'text-red-100');
-            } else if (type === 'success') {
-                statusMessage.classList.add('bg-green-800', 'text-green-100');
-            } else { // 'info'
-                statusMessage.classList.add('bg-blue-800', 'text-blue-100');
-            }
-            statusMessage.classList.remove('hidden');
-        }
-        function hideStatus() {
-            statusMessage.classList.add('hidden');
-        }
-        
-        // --- UI State Management ---
-        function setPlayingState(playing) {
-            isPlaying = playing;
-            if (playing) {
-                playButton.disabled = true;
-                generateFullButton.disabled = true;
-                pausePlaybackButton.disabled = false;
-                pausePlaybackButton.textContent = 'Pause Playback';
-                stopButton.disabled = false;
-                spinner.classList.remove('hidden');
-                playButtonText.textContent = 'Generating...';
-            } else {
-                playButton.disabled = false;
-                generateFullButton.disabled = false;
-                pausePlaybackButton.disabled = true;
-                pausePlaybackButton.textContent = 'Pause Playback';
-                stopButton.disabled = true;
-                spinner.classList.add('hidden');
-                playButtonText.textContent = 'Generate & Play';
-                streamPlaybackPaused = false;
-                
-                generateFullSpinner.classList.add('hidden');
-                generateFullButtonText.textContent = 'Generate Full Audio';
-                
-                streamReader = null;
-                clearSchedulerTimer();
-                clearStreamFinishTimer();
-                if (streamPlayerNode) {
-                    try {
-                        streamPlayerNode.disconnect();
-                    } catch (e) {
-                        console.warn('Could not disconnect stream player:', e);
-                    }
-                    streamPlayerNode = null;
-                }
-                if (streamPlayerModuleUrl) {
-                    URL.revokeObjectURL(streamPlayerModuleUrl);
-                    streamPlayerModuleUrl = null;
-                }
-            }
-        }
-        
-        function setFullGeneratingState(generating) {
-            if (generating) {
-                playButton.disabled = true;
-                generateFullButton.disabled = true;
-                pausePlaybackButton.disabled = true;
-                stopButton.disabled = false;
-                generateFullSpinner.classList.remove('hidden');
-                generateFullButtonText.textContent = 'Generating...';
-            } else {
-                setPlayingState(false);
-            }
-        }
-
-        async function toggleStreamPlaybackPause() {
-            if (!isPlaying || !audioContext || audioContext.state === 'closed') {
-                return;
-            }
-
-            if (streamPlaybackPaused || audioContext.state === 'suspended') {
-                try {
-                    await audioContext.resume();
-                    streamPlaybackPaused = false;
-                    pausePlaybackButton.textContent = 'Pause Playback';
-                    playButtonText.textContent = playbackStarted ? 'Playing...' : 'Buffering...';
-                    scheduleBufferedAudio();
-                    if (streamEnded && !useAudioWorkletPlayback) {
-                        finishFallbackPlaybackAfterBufferedAudio();
-                    }
-                } catch (error) {
-                    console.error('Could not resume playback:', error);
-                    showStatus(`Could not resume playback: ${error.message}`, 'error');
-                }
-            } else {
-                try {
-                    streamPlaybackPaused = true;
-                    clearSchedulerTimer();
-                    clearStreamFinishTimer();
-                    await audioContext.suspend();
-                    pausePlaybackButton.textContent = 'Resume Playback';
-                    playButtonText.textContent = 'Paused (generating...)';
-                    showStatus('Playback paused. Generation continues in the background.', 'info');
-                } catch (error) {
-                    streamPlaybackPaused = false;
-                    console.error('Could not pause playback:', error);
-                    showStatus(`Could not pause playback: ${error.message}`, 'error');
-                }
-            }
-        }
-
-        function buildSpeechRequestBody(responseFormat) {
-            const requestBody = {
-                input: textInput.value,
-                response_format: responseFormat,
-                max_length: parseInt(maxLengthInput.value),
-                cfg_value: parseFloat(cfgValueInput.value),
-                inference_timesteps: parseInt(inferenceTimestepsInput.value)
-            };
-
-            const seedValue = seedInput.value.trim();
-            if (seedValue !== '') {
-                requestBody.seed = parseInt(seedValue, 10);
-            }
-
-            const selectedVoice = voiceSelect.value;
-            if (selectedVoice) {
-                requestBody.voice = selectedVoice;
-                requestBody.voice_mode = voiceModeSelect.value;
-                if (voiceModeSelect.value === 'reference_plus_prompt') {
-                    const promptWavPath = promptWavPathInput.value.trim();
-                    const promptText = promptTextInput.value.trim();
-                    if (!promptWavPath || !promptText) {
-                        throw new Error('Prompt WAV path and prompt text are required for Reference + prompt mode.');
-                    }
-                    requestBody.prompt_wav_path = promptWavPath;
-                    requestBody.prompt_text = promptText;
-                }
-            } else {
-                const referenceWavPath = referenceWavPathInput.value.trim();
-                if (referenceWavPath) {
-                    requestBody.reference_wav_path = referenceWavPath;
-                }
-                const promptWavPath = promptWavPathInput.value.trim();
-                const promptText = promptTextInput.value.trim();
-                if (promptWavPath) {
-                    if (!promptText) {
-                        throw new Error('Prompt text is required when using a prompt WAV.');
-                    }
-                    requestBody.prompt_wav_path = promptWavPath;
-                    requestBody.prompt_text = promptText;
-                }
-            }
-
-            return requestBody;
-        }
-
-        function clearSchedulerTimer() {
-            if (schedulerTimer !== null) {
-                clearTimeout(schedulerTimer);
-                schedulerTimer = null;
-            }
-        }
-
-        function clearStreamFinishTimer() {
-            if (streamFinishTimer !== null) {
-                clearTimeout(streamFinishTimer);
-                streamFinishTimer = null;
-            }
-        }
-
-        async function initializeStreamPlayer() {
-            useAudioWorkletPlayback = false;
-            streamPlayerNode = null;
-            streamPlayerEndSent = false;
-
-            if (!audioContext || !audioContext.audioWorklet) {
-                return;
-            }
-
-            const workletSource = `
-                class PcmStreamPlayer extends AudioWorkletProcessor {
-                    constructor() {
-                        super();
-                        this.queue = [];
-                        this.readIndex = 0;
-                        this.started = false;
-                        this.ended = false;
-                        this.endedPosted = false;
-                        this.inSilence = true;
-                        this.lastSample = 0;
-                        this.fadeFrames = Math.max(1, Math.floor(sampleRate * 0.005));
-                        this.fadeInRemaining = 0;
-                        this.fadeOutRemaining = 0;
-                        this.fadeOutTotal = this.fadeFrames;
-                        this.fadeOutStart = 0;
-                        this.playedSinceReport = 0;
-
-                        this.port.onmessage = (event) => {
-                            const message = event.data || {};
-                            if (message.type === 'samples' && message.samples) {
-                                this.queue.push(message.samples);
-                            } else if (message.type === 'start') {
-                                this.started = true;
-                            } else if (message.type === 'end') {
-                                this.ended = true;
-                            }
-                        };
-                    }
-
-                    nextSample() {
-                        while (this.queue.length > 0) {
-                            const current = this.queue[0];
-                            if (this.readIndex < current.length) {
-                                return current[this.readIndex++];
-                            }
-                            this.queue.shift();
-                            this.readIndex = 0;
-                        }
-                        return null;
-                    }
-
-                    reportPlayed(force = false) {
-                        if (this.playedSinceReport >= 2048 || (force && this.playedSinceReport > 0)) {
-                            this.port.postMessage({
-                                type: 'played',
-                                frames: this.playedSinceReport,
-                            });
-                            this.playedSinceReport = 0;
-                        }
-                    }
-
-                    process(inputs, outputs) {
-                        const output = outputs[0][0];
-                        if (!this.started) {
-                            output.fill(0);
-                            return true;
-                        }
-
-                        for (let i = 0; i < output.length; i++) {
-                            const sample = this.nextSample();
-                            if (sample !== null) {
-                                if (this.inSilence || this.fadeOutRemaining > 0) {
-                                    this.fadeInRemaining = this.fadeFrames;
-                                    this.fadeOutRemaining = 0;
-                                    this.inSilence = false;
-                                }
-
-                                let gain = 1;
-                                if (this.fadeInRemaining > 0) {
-                                    gain = 1 - (this.fadeInRemaining / this.fadeFrames);
-                                    this.fadeInRemaining--;
-                                }
-                                output[i] = sample * gain;
-                                this.lastSample = sample;
-                                this.playedSinceReport++;
-                                continue;
-                            }
-
-                            if (!this.inSilence) {
-                                if (this.fadeOutRemaining === 0) {
-                                    this.fadeOutRemaining = this.fadeFrames;
-                                    this.fadeOutTotal = this.fadeFrames;
-                                    this.fadeOutStart = this.lastSample;
-                                    this.port.postMessage({ type: this.ended ? 'ending' : 'underrun' });
-                                }
-
-                                if (this.fadeOutRemaining > 0) {
-                                    output[i] = this.fadeOutStart * (this.fadeOutRemaining / this.fadeOutTotal);
-                                    this.fadeOutRemaining--;
-                                    if (this.fadeOutRemaining === 0) {
-                                        this.inSilence = true;
-                                    }
-                                } else {
-                                    output[i] = 0;
-                                    this.inSilence = true;
-                                }
-                            } else {
-                                output[i] = 0;
-                            }
-
-                            if (this.ended && this.inSilence && !this.endedPosted) {
-                                this.reportPlayed(true);
-                                this.port.postMessage({ type: 'ended' });
-                                this.endedPosted = true;
-                            }
-                        }
-
-                        this.reportPlayed();
-                        return true;
-                    }
-                }
-
-                registerProcessor('pcm-stream-player', PcmStreamPlayer);
-            `;
-
-            streamPlayerModuleUrl = URL.createObjectURL(
-                new Blob([workletSource], { type: 'application/javascript' })
-            );
-
-            try {
-                await audioContext.audioWorklet.addModule(streamPlayerModuleUrl);
-                streamPlayerNode = new AudioWorkletNode(audioContext, 'pcm-stream-player');
-                streamPlayerNode.port.onmessage = handleStreamPlayerMessage;
-                streamPlayerNode.connect(audioContext.destination);
-                useAudioWorkletPlayback = true;
-            } catch (error) {
-                console.warn('AudioWorklet unavailable, falling back to buffer scheduler:', error);
-                if (streamPlayerModuleUrl) {
-                    URL.revokeObjectURL(streamPlayerModuleUrl);
-                    streamPlayerModuleUrl = null;
-                }
-                streamPlayerNode = null;
-            }
-        }
-
-        function handleStreamPlayerMessage(event) {
-            const message = event.data || {};
-            if (message.type === 'played') {
-                queuedAudioDuration = Math.max(
-                    0,
-                    queuedAudioDuration - (message.frames / sampleRate)
-                );
-            } else if (message.type === 'underrun') {
-                playButtonText.textContent = 'Buffering...';
-            } else if (message.type === 'ending') {
-                playButtonText.textContent = 'Finishing...';
-            } else if (message.type === 'ended') {
-                finishStreamPlayback();
-            }
-        }
-
-        function disableWorkletPlayback(reason) {
-            console.warn(reason);
-            useAudioWorkletPlayback = false;
-            if (streamPlayerNode) {
-                try {
-                    streamPlayerNode.disconnect();
-                } catch (e) {
-                    console.warn('Could not disconnect stream player:', e);
-                }
-                streamPlayerNode = null;
-            }
-            if (streamPlayerModuleUrl) {
-                URL.revokeObjectURL(streamPlayerModuleUrl);
-                streamPlayerModuleUrl = null;
-            }
-        }
-
-        function flushPendingSamples() {
-            if (pendingSamples.length > 0) {
-                streamQueue.push(pendingSamples);
-                queuedAudioDuration += pendingSamples.length / sampleRate;
-                pendingSamples = new Float32Array(0);
-                scheduleBufferedAudio();
-            }
-        }
-
-        function resetStreamPlaybackState() {
-            clearSchedulerTimer();
-            streamQueue = [];
-            queuedAudioDuration = 0;
-            streamEnded = false;
-            playbackStarted = false;
-            pendingPcmBytes = new Uint8Array(0);
-            nextStartTime = 0;
-            fadeInNextChunk = false;
-            pendingSamples = new Float32Array(0);
-            streamPlayerEndSent = false;
-            streamPlaybackPaused = false;
-            clearStreamFinishTimer();
-            pausePlaybackButton.textContent = 'Pause Playback';
-        }
-
-        function enqueueStreamChunk(pcm32Data) {
-            if (pendingSamples.length > 0) {
-                const merged = new Float32Array(pendingSamples.length + pcm32Data.length);
-                merged.set(pendingSamples, 0);
-                merged.set(pcm32Data, pendingSamples.length);
-                pendingSamples = merged;
-            } else {
-                pendingSamples = pcm32Data;
-            }
-
-            const chunkSize = 7680;
-            while (pendingSamples.length >= chunkSize) {
-                const chunk = pendingSamples.slice(0, chunkSize);
-                pendingSamples = pendingSamples.slice(chunkSize);
-                streamQueue.push(chunk);
-                queuedAudioDuration += chunk.length / sampleRate;
-                scheduleBufferedAudio();
-            }
-        }
-
-        function pcmBytesToFloat32(value) {
-            let bytes = new Uint8Array(value.buffer, value.byteOffset, value.byteLength);
-
-            if (pendingPcmBytes.length > 0) {
-                const merged = new Uint8Array(pendingPcmBytes.length + bytes.length);
-                merged.set(pendingPcmBytes, 0);
-                merged.set(bytes, pendingPcmBytes.length);
-                bytes = merged;
-                pendingPcmBytes = new Uint8Array(0);
-            }
-
-            const alignedByteLength = bytes.length - (bytes.length % 2);
-            if (alignedByteLength < bytes.length) {
-                pendingPcmBytes = bytes.slice(alignedByteLength);
-            }
-            if (alignedByteLength === 0) {
-                return null;
-            }
-
-            const sampleBytes = bytes.slice(0, alignedByteLength);
-            const pcm16Data = new Int16Array(sampleBytes.buffer);
-            const pcm32Data = new Float32Array(pcm16Data.length);
-            for (let i = 0; i < pcm16Data.length; i++) {
-                pcm32Data[i] = pcm16Data[i] / 32768.0;
-            }
-            return pcm32Data;
-        }
-
-        function copyForPlayback(samples, fadeIn) {
-            const out = new Float32Array(samples);
-            if (!fadeIn) {
-                return out;
-            }
-            const fadeSamples = Math.min(
-                out.length,
-                Math.max(1, Math.floor(sampleRate * FADE_SECONDS))
-            );
-            for (let i = 0; i < fadeSamples; i++) {
-                out[i] *= i / fadeSamples;
-            }
-            return out;
-        }
-
-        function scheduleBufferedAudio() {
-            clearSchedulerTimer();
-            if (!audioContext || audioContext.state === 'closed' || !isPlaying) {
-                return;
-            }
-            if (streamPlaybackPaused) {
-                return;
-            }
-
-            if (useAudioWorkletPlayback && streamPlayerNode) {
-                scheduleWorkletAudio();
-                return;
-            }
-
-            if (!playbackStarted) {
-                if (!streamEnded && queuedAudioDuration < INITIAL_STREAM_BUFFER_SECONDS) {
-                    playButtonText.textContent = 'Buffering...';
-                    return;
-                }
-                playbackStarted = true;
-                nextStartTime = audioContext.currentTime + RESTART_DELAY_SECONDS;
-                playButtonText.textContent = 'Playing...';
-            }
-
-            if (nextStartTime < audioContext.currentTime) {
-                nextStartTime = audioContext.currentTime + RESTART_DELAY_SECONDS;
-                fadeInNextChunk = true;
-            }
-
-            while (
-                streamQueue.length > 0 &&
-                (streamEnded || nextStartTime - audioContext.currentTime < TARGET_SCHEDULE_AHEAD_SECONDS)
-            ) {
-                const samples = streamQueue.shift();
-                queuedAudioDuration = Math.max(0, queuedAudioDuration - samples.length / sampleRate);
-
-                const audioBuffer = audioContext.createBuffer(1, samples.length, sampleRate);
-                audioBuffer.getChannelData(0).set(copyForPlayback(samples, fadeInNextChunk));
-                fadeInNextChunk = false;
-
-                const source = audioContext.createBufferSource();
-                source.buffer = audioBuffer;
-                source.connect(audioContext.destination);
-                source.start(nextStartTime);
-                nextStartTime += audioBuffer.duration;
-            }
-
-            if (!streamEnded || streamQueue.length > 0) {
-                schedulerTimer = setTimeout(scheduleBufferedAudio, 50);
-            }
-        }
-
-        function scheduleWorkletAudio() {
-            while (streamQueue.length > 0 && streamPlayerNode) {
-                const samples = streamQueue.shift();
-                const samplesForWorklet = new Float32Array(samples);
-                streamPlayerNode.port.postMessage(
-                    { type: 'samples', samples: samplesForWorklet },
-                    [samplesForWorklet.buffer]
-                );
-            }
-
-            if (!playbackStarted) {
-                if (!streamEnded && queuedAudioDuration < INITIAL_STREAM_BUFFER_SECONDS) {
-                    playButtonText.textContent = 'Buffering...';
-                    return;
-                }
-                playbackStarted = true;
-                playButtonText.textContent = 'Playing...';
-                streamPlayerNode.port.postMessage({ type: 'start' });
-            } else if (!streamEnded) {
-                playButtonText.textContent = 'Playing...';
-            }
-
-            if (streamEnded && !streamPlayerEndSent) {
-                streamPlayerEndSent = true;
-                streamPlayerNode.port.postMessage({ type: 'end' });
-            }
-        }
-
-        function finishStreamPlayback() {
-            if (streamPlayerNode) {
-                try {
-                    streamPlayerNode.disconnect();
-                } catch (e) {
-                    console.warn('Could not disconnect stream player:', e);
-                }
-                streamPlayerNode = null;
-            }
-            if (audioContext && audioContext.state !== 'closed') {
-                audioContext.close().then(() => console.log('AudioContext closed after finishing.'));
-                audioContext = null;
-            }
-            if (streamPlayerModuleUrl) {
-                URL.revokeObjectURL(streamPlayerModuleUrl);
-                streamPlayerModuleUrl = null;
-            }
-            if (isPlaying) {
-                showStatus('Playback finished.', 'success');
-                setPlayingState(false);
-            }
-        }
-
-        function finishFallbackPlaybackAfterBufferedAudio() {
-            if (streamPlaybackPaused || !audioContext || audioContext.state === 'closed') {
-                return;
-            }
-            clearStreamFinishTimer();
-
-            const remainingTimeInSeconds = nextStartTime - audioContext.currentTime;
-            const delayInMs = Math.max(0, remainingTimeInSeconds * 1000) + 250;
-
-            console.log(`Playback will finish in ${remainingTimeInSeconds.toFixed(2)}s. Closing context in ${delayInMs.toFixed(0)}ms.`);
-
-            streamFinishTimer = setTimeout(() => {
-                streamFinishTimer = null;
-                if (streamPlaybackPaused) {
-                    return;
-                }
-                if (audioContext && audioContext.state !== 'closed') {
-                    audioContext.close().then(() => console.log('AudioContext closed after finishing.'));
-                    audioContext = null;
-                }
-
-                if (isPlaying) {
-                    showStatus('Playback finished.', 'success');
-                    setPlayingState(false);
-                }
-            }, delayInMs);
-        }
-
-        // --- Create Voice Handler ---
-        createVoiceForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            hideStatus();
-
-            const name = newVoiceNameInput.value.trim();
-            const audioPath = newVoiceAudioInput.value.trim();
-            const promptText = newVoiceTextInput.value.trim();
-            const replace = newVoiceReplaceCheckbox.checked;
-
-            if (!name || !audioPath) {
-                showStatus('Voice name and reference audio path are required.', 'error');
-                return;
-            }
-
-            createVoiceBtn.disabled = true;
-            createVoiceBtnText.textContent = 'Creating...';
-            createVoiceSpinner.classList.remove('hidden');
-
-            try {
-                const response = await fetch('/v1/voices', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        voice_name: name,
-                        reference_wav_path: audioPath,
-                        prompt_text: promptText,
-                        replace: replace
-                    })
-                });
-
-                const result = await response.json();
-
-                if (!response.ok) {
-                    throw new Error(result.detail || 'Failed to create voice');
-                }
-
-                const modeLabel = result.mode === 'reference_plus_continuation'
-                    ? ' with transcript'
-                    : '';
-                showStatus(`Success! Voice '${name}' created${modeLabel}. Switching to Generate tab...`, 'success');
-
-                // Refresh voice list
-                await loadAvailableVoices();
-
-                // Select the new voice
-                voiceSelect.value = name;
-                voiceSelect.dispatchEvent(new Event('change'));
-
-                // Switch back to generate tab after a short delay
-                setTimeout(() => {
-                    switchTab('generate');
-                    createVoiceBtn.disabled = false;
-                    createVoiceBtnText.textContent = 'Create Voice';
-                    createVoiceSpinner.classList.add('hidden');
-                    // Reset form?
-                    createVoiceForm.reset();
-                }, 1500);
-
-            } catch (error) {
-                console.error('Create voice error:', error);
-                showStatus(`Error creating voice: ${error.message}`, 'error');
-                createVoiceBtn.disabled = false;
-                createVoiceBtnText.textContent = 'Create Voice';
-                createVoiceSpinner.classList.add('hidden');
-            }
-        });
-
-        // --- Form Submit Handler (Streaming) ---
-        ttsForm.addEventListener('submit', async (event) => {
-            event.preventDefault();
-
-            if (audioContext && audioContext.state !== 'closed') {
-                audioContext.close().then(() => console.log('Previous AudioContext closed.'));
-            }
-            audioPlayerContainer.classList.add('hidden');
-            if (audioPlayer.src) {
-                URL.revokeObjectURL(audioPlayer.src);
-            }
-            audioPlayer.src = '';
-            audioChunks = [];
-            resetStreamPlaybackState();
-            
-            const text = textInput.value;
-            if (!text.trim()) {
-                showStatus('Please enter some text to generate.', 'error');
-                return;
-            }
-
-            hideStatus();
-            setPlayingState(true);
-
-            try {
-                const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-                try {
-                    audioContext = new AudioContextClass({ sampleRate });
-                } catch (e) {
-                    audioContext = new AudioContextClass();
-                }
-                await initializeStreamPlayer();
-                console.log('AudioContext started, state:', audioContext.state);
-            } catch (e) {
-                console.error('Error creating AudioContext:', e);
-                showStatus('Error: Could not initialize Web Audio. ' + e.message, 'error');
-                setPlayingState(false);
-                return;
-            }
-
-            try {
-                const requestBody = buildSpeechRequestBody('pcm');
-
-                const response = await fetch('/v1/audio/speech/stream', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/octet-stream',
-                    },
-                    body: JSON.stringify(requestBody)
-                });
-
-                if (!response.ok) {
-                    const errorBody = await response.json();
-                    throw new Error(errorBody.detail || `Server error: ${response.status}`);
-                }
-
-                const headerSampleRate = response.headers.get('X-Sample-Rate');
-                if (headerSampleRate) {
-                    sampleRate = parseInt(headerSampleRate, 10);
-                    console.log('Using sample rate from header:', sampleRate);
-                    if (useAudioWorkletPlayback && audioContext && audioContext.sampleRate !== sampleRate) {
-                        disableWorkletPlayback(
-                            `AudioContext is running at ${audioContext.sampleRate}Hz; stream is ${sampleRate}Hz.`
-                        );
-                    }
-                } else {
-                    console.warn(`No X-Sample-Rate header found, defaulting to ${sampleRate}Hz.`);
-                }
-                
-                streamReader = response.body.getReader();
-
-                showStatus('Streaming... Audio will play shortly.', 'info');
-                playButtonText.textContent = 'Playing...';
-                
-                processStream();
-
-            } catch (error) {
-                console.error('Fetch error:', error);
-                showStatus(`Error: ${error.message}`, 'error');
-                setPlayingState(false);
-                if (audioContext && audioContext.state !== 'closed') {
-                    audioContext.close();
-                }
-            }
-        });
-
-        // --- Full Generation Button Handler ---
-        generateFullButton.addEventListener('click', async (event) => {
-            event.preventDefault();
-            
-            if (audioContext && audioContext.state !== 'closed') {
-                audioContext.close().then(() => console.log('Previous AudioContext closed.'));
-            }
-            audioPlayerContainer.classList.add('hidden');
-            if (audioPlayer.src) {
-                URL.revokeObjectURL(audioPlayer.src);
-            }
-            audioPlayer.src = '';
-            audioChunks = [];
-            
-            const text = textInput.value;
-            if (!text.trim()) {
-                showStatus('Please enter some text to generate.', 'error');
-                return;
-            }
-
-            hideStatus();
-            setFullGeneratingState(true);
-
-            try {
-                const requestBody = buildSpeechRequestBody('wav');
-
-                const response = await fetch('/v1/audio/speech', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Accept': 'audio/wav',
-                    },
-                    body: JSON.stringify(requestBody)
-                });
-
-                if (!response.ok) {
-                    let errorMsg;
-                    try {
-                        const errorBody = await response.json();
-                        errorMsg = errorBody.detail;
-                    } catch (e) {
-                        errorMsg = response.statusText;
-                    }
-                    throw new Error(errorMsg || `Server error: ${response.status}`);
-                }
-
-                const audioBlob = await response.blob();
-                
-                if (audioBlob.size === 0) {
-                    throw new Error('Received empty audio file from server.');
-                }
-                
-                if (audioBlob.type === 'application/json') {
-                     throw new Error('Server returned an error. Check server logs.');
-                }
-
-                const audioUrl = URL.createObjectURL(audioBlob);
-                audioPlayer.src = audioUrl;
-                audioPlayerContainer.classList.remove('hidden');
-                
-                showStatus('Full audio generation successful.', 'success');
-                setFullGeneratingState(false);
-
-            } catch (error) {
-                console.error('Full generation error:', error);
-                if (isPlaying) {
-                     showStatus(`Error: ${error.message}`, 'error');
-                }
-                setFullGeneratingState(false);
-            }
-        });
-
-        // --- Stop Button Handler ---
-        stopButton.addEventListener('click', async () => {
-            if (streamReader) {
-                streamReader.cancel('User stopped playback.').catch(() => {});
-            }
-            resetStreamPlaybackState();
-            
-            try {
-                const response = await fetch('/v1/audio/speech/cancel', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    }
-                });
-                
-                if (response.ok) {
-                    const result = await response.json();
-                    console.log('Server cancellation successful:', result.message);
-                } else {
-                    console.error('Server cancellation failed:', response.status);
-                }
-            } catch (error) {
-                console.error('Error calling server cancellation:', error);
-            }
-            
-            if (audioContext && audioContext.state !== 'closed') {
-                audioContext.close().then(() => {
-                    console.log('AudioContext closed by user.');
-                });
-                audioContext = null;
-            }
-            
-            setPlayingState(false);
-            showStatus('Generation/Playback stopped by user.', 'info');
-        });
-
-        // --- Core Stream Processing Function ---
-        async function processStream() {
-            if (!streamReader) return;
-
-            try {
-                const { done, value } = await streamReader.read();
-
-                if (done) {
-                    streamEnded = true;
-                    console.log('Stream download finished. Waiting for playback to complete.');
-                    flushPendingSamples();
-                    
-                    if (audioContext && audioContext.state !== 'closed' && isPlaying) {
-                        scheduleBufferedAudio();
-                        buildFinalAudio(); 
-
-                        if (useAudioWorkletPlayback && streamPlayerNode) {
-                            return;
-                        }
-
-                        if (streamPlaybackPaused) {
-                            showStatus('Generation finished. Resume playback to hear the buffered audio.', 'info');
-                        } else {
-                            finishFallbackPlaybackAfterBufferedAudio();
-                        }
-
-                    } else {
-                        if (isPlaying) {
-                            setPlayingState(false);
-                        }
-                    }
-                    return;
-                }
-
-                const pcm32Data = pcmBytesToFloat32(value);
-
-                if (pcm32Data) {
-                    audioChunks.push(pcm32Data);
-                    enqueueStreamChunk(pcm32Data);
-                }
-
-                processStream();
-
-            } catch (error) {
-                if (error.name === 'AbortError' || (error.message && error.message.includes('User stopped'))) {
-                    console.log('Stream reading cancelled by user.');
-                    buildFinalAudio();
-                } else {
-                    console.error('Error reading stream:', error);
-                    showStatus(`Stream error: ${error.message}`, 'error');
-                }
-                setPlayingState(false);
-                if (audioContext && audioContext.state !== 'closed') {
-                    audioContext.close();
-                }
-            }
-        }
-        
-        function buildFinalAudio() {
-            if (!audioChunks.length) { 
-                console.log('No audio chunks to build final audio.');
-                return;
-            }
-
-            try {
-                const totalSamples = audioChunks.reduce((acc, chunk) => acc + chunk.length, 0);
-                if (totalSamples === 0) {
-                    console.log('No samples to build audio.');
-                    return;
-                }
-
-                const offlineCtx = new OfflineAudioContext(1, totalSamples, sampleRate);
-                const bufferSource = offlineCtx.createBufferSource();
-
-                const finalBuffer = offlineCtx.createBuffer(1, totalSamples, sampleRate);
-                let offset = 0;
-                for (const chunk of audioChunks) {
-                    finalBuffer.getChannelData(0).set(chunk, offset);
-                    offset += chunk.length;
-                }
-
-                bufferSource.buffer = finalBuffer;
-                bufferSource.connect(offlineCtx.destination);
-                bufferSource.start();
-
-                offlineCtx.startRendering().then(renderedBuffer => {
-                    const wavBlob = bufferToWave(renderedBuffer);
-                    const audioUrl = URL.createObjectURL(wavBlob);
-                    
-                    audioPlayer.src = audioUrl;
-                    audioPlayerContainer.classList.remove('hidden');
-                }).catch(e => {
-                    console.error('Error rendering final audio:', e);
-                    showStatus('Could not render final audio file.', 'error');
-                });
-
-            } catch (e) {
-                console.error('Error building final audio:', e);
-                showStatus('Could not build final audio file.', 'error');
-            }
-        }
-        
-        function bufferToWave(audioBuffer) {
-            const numOfChan = audioBuffer.numberOfChannels;
-            const sampleRate = audioBuffer.sampleRate;
-            const length = audioBuffer.length * numOfChan * 2 + 44;
-            const buffer = new ArrayBuffer(length);
-            const view = new DataView(buffer);
-            const channels = [];
-            let i, sample;
-            let offset = 0;
-
-            for (i = 0; i < numOfChan; i++) {
-                channels.push(audioBuffer.getChannelData(i));
-            }
-
-            writeString(view, offset, 'RIFF'); offset += 4;
-            view.setUint32(offset, length - 8, true); offset += 4;
-            writeString(view, offset, 'WAVE'); offset += 4;
-            writeString(view, offset, 'fmt '); offset += 4;
-            view.setUint32(offset, 16, true); offset += 4;
-            view.setUint16(offset, 1, true); offset += 2;
-            view.setUint16(offset, numOfChan, true); offset += 2;
-            view.setUint32(offset, sampleRate, true); offset += 4;
-            view.setUint32(offset, sampleRate * 2 * numOfChan, true); offset += 4;
-            view.setUint16(offset, numOfChan * 2, true); offset += 2;
-            view.setUint16(offset, 16, true); offset += 2;
-            writeString(view, offset, 'data'); offset += 4;
-            view.setUint32(offset, length - 44, true); offset += 4;
-
-            for (i = 0; i < audioBuffer.length; i++) {
-                for (let chan = 0; chan < numOfChan; chan++) {
-                    sample = Math.max(-1, Math.min(1, channels[chan][i]));
-                    sample = (sample < 0 ? sample * 0x8000 : sample * 0x7FFF) | 0;
-                    view.setInt16(offset, sample, true);
-                    offset += 2;
-                }
-            }
-
-            return new Blob([view], { type: 'audio/wav' });
-        }
-
-        function writeString(view, offset, string) {
-            for (let i = 0; i < string.length; i++) {
-                view.setUint8(offset + i, string.charCodeAt(i));
-            }
-        }
-
-    </script>
+    <div class="card">
+      <label>Ergebnis</label>
+      <audio id="voxPlayer" controls style="width:100%"></audio>
+      <div class="row" style="margin-top:.6rem">
+        <select id="voxFmt" style="flex:0 0 150px">
+          <option value="wav">WAV</option>
+          <option value="mp3">MP3</option>
+          <option value="flac">FLAC</option>
+          <option value="opus">OPUS</option>
+          <option value="ogg">OGG</option>
+          <option value="aac">AAC</option>
+        </select>
+        <button class="btn sec" id="voxDl" disabled>Download</button>
+        <button class="btn ok" id="saveGenBtn" disabled>Als Stimme speichern</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ HIGGS ============ -->
+  <div class="pane" id="paneHiggs">
+    <div class="card">
+      <label>Stimme</label>
+      <select id="hgVoice"></select>
+      <label>Steuertokens</label>
+      <div class="tags" id="hgTags"></div>
+      <label>Text</label>
+      <textarea id="hgText" rows="8" placeholder="Text, der vorgelesen werden soll"></textarea>
+      <details style="margin-top:.6rem">
+        <summary>Erweitert</summary>
+        <div class="row" style="margin-top:.4rem">
+          <div class="g"><label>temperature</label><input type="number" id="hgTemp" value="0.8" step="0.05"></div>
+          <div class="g"><label>seam</label><input type="number" id="hgSeam" value="0.25" step="0.05"></div>
+          <div class="g"><label>Seed</label><input type="text" id="hgSeed" placeholder="0"></div>
+        </div>
+      </details>
+      <div class="row" style="margin-top:.8rem">
+        <button class="btn" id="hgGenBtn">Synthetisieren</button>
+        <button class="btn sec" id="hgStopBtn">Stopp</button>
+      </div>
+      <div class="prog" id="hgProg"><div></div></div>
+    </div>
+    <div class="card">
+      <label>Ergebnis</label>
+      <audio id="hgPlayer" controls style="width:100%"></audio>
+      <div class="row" style="margin-top:.6rem">
+        <select id="hgFmt" style="flex:0 0 150px">
+          <option value="wav">WAV</option>
+          <option value="mp3">MP3</option>
+          <option value="flac">FLAC</option>
+        </select>
+        <button class="btn sec" id="hgDl" disabled>Download</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ STIMMEN-BIBLIOTHEK ============ -->
+  <div class="pane" id="paneLib">
+    <div class="card">
+      <h3>Stimme erstellen</h3>
+      <div class="row"><div class="g"><label>Name</label><input type="text" id="libName" placeholder="z.B. meine_stimme"></div></div>
+      <label>Referenz-Text</label>
+      <textarea id="libReftext" rows="3" placeholder="Transkript der Aufnahme"></textarea>
+      <div class="row" style="margin-top:.6rem"><div class="g"><label>Audiodatei (mp3/wav/flac…)</label><input type="file" id="libFile" accept="audio/*"></div></div>
+      <div class="row" style="margin-top:.6rem"><button class="btn ok" id="libCreateBtn">Stimme erstellen</button></div>
+    </div>
+    <div class="card">
+      <h3>Vorhandene Stimmen</h3>
+      <label>Testsatz für die Vorschau</label>
+      <input type="text" id="testSentence" value="Hallo, das ist ein Test meiner Stimme.">
+      <div id="libList" style="margin-top:.4rem"><p class="hint">Lade…</p></div>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+const $=id=>document.getElementById(id);
+const HIGGS_URL="http://127.0.0.1:8006";
+let abortCtrl=null;
+let ctx=null, nextT=0;
+let vox={parts:[],rate:48000,wav:null,cachedText:""};
+let hg={parts:[],rate:24000,wav:null};
+
+function status(msg,ok=true){ $("status").textContent=msg; $("status").style.color=ok?"var(--txt)":"var(--err)"; }
+function progress(el,p){ el.style.display=p>=0?"block":"none"; if(p>=0)el.firstElementChild.style.width=p+"%"; }
+function esc(s){return s.replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+
+function setTab(w){
+  [["tabVox","paneVox"],["tabHiggs","paneHiggs"],["tabLib","paneLib"]].forEach(([t,p])=>{
+    $(t).classList.toggle("active",w===p); $(p).classList.toggle("active",w===p);
+  });
+}
+$("tabVox").onclick=()=>setTab("paneVox");
+$("tabHiggs").onclick=()=>setTab("paneHiggs");
+$("tabLib").onclick=()=>setTab("paneLib");
+
+function getCtx(sr){
+  if(!ctx||ctx.sampleRate!==sr){ctx=new(window.AudioContext||window.webkitAudioContext)({sampleRate:sr});nextT=0;}
+  if(ctx.state==="suspended")ctx.resume();
+  return ctx;
+}
+function playPCM16(ab,sr){
+  const n=Math.floor(ab.byteLength/2); if(n<=0)return;
+  const i16=new Int16Array(ab,0,n), f32=new Float32Array(n);
+  for(let i=0;i<n;i++) f32[i]=i16[i]/32768;
+  const c=getCtx(sr), now=c.currentTime;
+  if(nextT<now+0.12)nextT=now+0.12;
+  const b=c.createBuffer(1,f32.length,c.sampleRate); b.copyToChannel(f32,0);
+  const s=c.createBufferSource(); s.buffer=b; s.connect(c.destination); s.start(nextT);
+  nextT+=f32.length/c.sampleRate;
+}
+function buildWav(parts,sr){
+  let total=0; parts.forEach(a=>total+=Math.floor(a.byteLength/2));
+  const pcm=new Int16Array(total); let off=0;
+  parts.forEach(ab=>{const n=Math.floor(ab.byteLength/2);pcm.set(new Int16Array(ab,0,n),off);off+=n;});
+  const buf=new ArrayBuffer(44+pcm.length*2),dv=new DataView(buf);
+  const ws=(o,s)=>{for(let i=0;i<s.length;i++)dv.setUint8(o+i,s.charCodeAt(i));};
+  ws(0,"RIFF");dv.setUint32(4,36+pcm.length*2,true);ws(8,"WAVE");
+  ws(12,"fmt ");dv.setUint32(16,16,true);dv.setUint16(20,1,true);dv.setUint16(22,1,true);
+  dv.setUint32(24,sr,true);dv.setUint32(28,sr*2,true);dv.setUint16(32,2,true);dv.setUint16(34,16,true);
+  ws(36,"data");dv.setUint32(40,pcm.length*2,true);
+  for(let i=0;i<pcm.length;i++)dv.setInt16(44+i*2,pcm[i],true);
+  return new Blob([buf],{type:"audio/wav"});
+}
+function triggerDownload(blob,name){
+  const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=name; a.click();
+}
+async function convertDownload(wavBlob,base,fmt){
+  const fd=new FormData(); fd.append("file",wavBlob,"audio.wav"); fd.append("to_format",fmt);
+  const r=await fetch("/api/convert",{method:"POST",body:fd});
+  if(!r.ok){let m=r.statusText;try{m=(await r.json()).detail||m;}catch(e){}throw new Error(m);}
+  triggerDownload(await r.blob(), base+"."+fmt);
+}
+
+/* ============ VOXCPM2 ============ */
+let voicesVox={system:[],custom:[],details:{}};
+async function loadVox(){
+  try{
+    const j=await(await fetch("/voices")).json();
+    voicesVox={system:j.system_voices||[],custom:j.custom_voices||[],details:j.custom_voice_details||{}};
+    const sel=$("voiceSel"),cur=sel.value; sel.innerHTML="";
+    [...voicesVox.custom,...voicesVox.system].forEach(n=>{const o=document.createElement("option");o.value=n;o.textContent=n;sel.appendChild(o);});
+    if(cur&&[...voicesVox.custom,...voicesVox.system].includes(cur))sel.value=cur;
+  }catch(e){status("Fehler VoxCPM2: "+e.message,false);}
+}
+function voxModeChanged(){
+  const m=$("voxMode").value;
+  $("voiceRow").style.display=(m==="design")?"none":"block";
+  const isHigh=(m==="high");
+  $("desc").disabled=isHigh; $("desc").style.opacity=isHigh?0.4:1;
+  $("desc").placeholder=isHigh?"(im High-similarity-Modus nicht verfügbar)"
+                              :"A warm, calm male voice, slightly smiling, medium pace";
+}
+$("voxMode").onchange=voxModeChanged; voxModeChanged();
+function voxPayload(){
+  const m=$("voxMode").value, p={model:"voxcpm2",input:$("text").value,response_format:"wav",
+    max_length:2048,cfg_value:+$("cfg").value,inference_timesteps:+$("steps").value};
+  const seed=$("seed").value.trim(); if(seed!=="")p.seed=+seed;
+  if(m==="design"){ p.control_instruction=$("desc").value; }
+  else if(m==="ref"){ p.voice=$("voiceSel").value; p.voice_mode="reference"; p.control_instruction=$("desc").value; }
+  else { p.voice=$("voiceSel").value; p.voice_mode="high_similarity"; }
+  return p;
+}
+$("genBtn").onclick=async()=>{
+  if(!$("text").value.trim()){status("Bitte Text eingeben.",false);return;}
+  const m=$("voxMode").value;
+  if(m!=="design"&&!$("voiceSel").value){status("Bitte eine Stimme wählen.",false);return;}
+  const btn=$("genBtn"); btn.disabled=true;
+  vox={parts:[],rate:48000,wav:null,cachedText:$("text").value};
+  $("voxPlayer").src=""; $("voxDl").disabled=true; $("saveGenBtn").disabled=true;
+  progress($("prog"),0); const t0=performance.now(); let ttfb=null;
+  abortCtrl=new AbortController();
+  try{
+    const r=await fetch("/v1/audio/speech/stream",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(voxPayload()),signal:abortCtrl.signal});
+    if(!r.ok){let m=r.statusText;try{m=(await r.json()).detail||m;}catch(e){}throw new Error(m);}
+    const sr=Number(r.headers.get("X-Sample-Rate"))||48000; vox.rate=sr;
+    const rd=r.body.getReader();
+    while(true){const{done,value}=await rd.read();if(done)break;
+      if(value&&value.byteLength){if(ttfb===null){ttfb=Math.round(performance.now()-t0);status("TTFB "+ttfb+" ms");}playPCM16(value,sr);vox.parts.push(value);}}
+    if(vox.parts.length){ vox.wav=buildWav(vox.parts,sr);
+      $("voxPlayer").src=URL.createObjectURL(vox.wav);
+      $("voxDl").disabled=false; $("saveGenBtn").disabled=false;
+      status("Fertig — "+Math.round(vox.parts.reduce((s,a)=>s+a.byteLength,0)/2/sr)+" s. TTFB "+ttfb+" ms.");
+    } else status("Kein Audio.",false);
+    progress($("prog"),100);
+  }catch(e){if(e.name!=="AbortError")status("Fehler: "+e.message,false);else status("Abgebrochen.");}
+  finally{btn.disabled=false;progress($("prog"),-1);}
+};
+$("stopBtn").onclick=()=>{if(abortCtrl)abortCtrl.abort();};
+$("voxDl").onclick=async()=>{
+  if(!vox.wav)return; const fmt=$("voxFmt").value;
+  try{ if(fmt==="wav")triggerDownload(vox.wav,"stimme.wav"); else await convertDownload(vox.wav,"stimme",fmt); status("Download gestartet."); }
+  catch(e){status("Fehler Download: "+e.message,false);}
+};
+$("saveGenBtn").onclick=async()=>{
+  if(!vox.wav){status("Erst synthetisieren.",false);return;}
+  const name=prompt("Name der Stimme:"); if(!name||!name.trim())return;
+  const fd=new FormData();
+  fd.append("voice_name",name.trim()); fd.append("prompt_text",vox.cachedText); fd.append("file",vox.wav,name+".wav");
+  try{const r=await fetch("/v1/voices/upload",{method:"POST",body:fd});const j=await r.json();
+    if(!r.ok)throw new Error(j.detail||r.statusText);
+    status("Stimme '"+name+"' gespeichert ("+j.mode+")"); loadVox(); loadLib(); loadHg();
+  }catch(e){status("Fehler Speichern: "+e.message,false);}
+};
+
+/* ============ HIGGS ============ */
+const HIGHS_TAGS=[
+  ["Emotion",["elation","amusement","enthusiasm","determination","pride","contentment","affection","relief","contemplation","confusion","surprise","awe","longing","arousal","anger","fear","disgust","bitterness","sadness","shame","helplessness"],"emotion"],
+  ["Stil",["singing","shouting","whispering"],"style"],
+  ["Prosodie",["speed_very_slow","speed_slow","speed_fast","speed_very_fast","pause","long_pause","pitch_low","pitch_high","expressive_high","expressive_low"],"prosody"],
+  ["Sound-Effekte",["cough","laughter","crying","screaming","burping","humming","sigh","sniff","sneeze"],"sfx"],
+];
+(function buildTags(){
+  const bar=$("hgTags"); bar.innerHTML="";
+  HIGHS_TAGS.forEach(([cat,vals,type])=>{
+    bar.insertAdjacentHTML("beforeend",'<span class="cat">'+cat+'</span>');
+    vals.forEach(v=>{
+      const b=document.createElement("button"); b.textContent=v; b.title="<|"+type+":"+v+"|>";
+      b.onclick=()=>insertTag("<|"+type+":"+v+"|>");
+      bar.appendChild(b);
+    });
+  });
+})();
+function insertTag(tok){
+  const ta=$("hgText"), s=ta.selectionStart, e=ta.selectionEnd;
+  ta.value=ta.value.slice(0,s)+tok+ta.value.slice(e);
+  ta.focus(); ta.selectionStart=ta.selectionEnd=s+tok.length;
+}
+let voicesHg=[];
+async function loadHg(){
+  try{const j=await(await fetch(HIGGS_URL+"/api/voices")).json();
+    voicesHg=j.voices||[];
+    const sel=$("hgVoice"),cur=sel.value; sel.innerHTML="";
+    voicesHg.forEach(n=>{const o=document.createElement("option");o.value=n;o.textContent=n;sel.appendChild(o);});
+    if(cur&&voicesHg.includes(cur))sel.value=cur;
+  }catch(e){}
+}
+$("hgGenBtn").onclick=async()=>{
+  if(!$("hgText").value.trim()){status("Bitte Text eingeben.",false);return;}
+  const v=$("hgVoice").value; if(!v){status("Bitte eine Stimme wählen.",false);return;}
+  const btn=$("hgGenBtn"); btn.disabled=true;
+  hg={parts:[],rate:24000,wav:null};
+  $("hgPlayer").src=""; $("hgDl").disabled=true;
+  progress($("hgProg"),0); const t0=performance.now(); let ttfb=null;
+  abortCtrl=new AbortController();
+  const p={voice:v,text:$("hgText").value,temperature:+$("hgTemp").value,seam_frames:+$("hgSeam").value};
+  const seed=$("hgSeed").value.trim(); if(seed!=="")p.seed=+seed;
+  try{
+    const r=await fetch(HIGGS_URL+"/api/synthesize/stream",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(p),signal:abortCtrl.signal});
+    if(!r.ok){let m=r.statusText;try{m=(await r.json()).detail||m;}catch(e){}throw new Error(m);}
+    const sr=Number(r.headers.get("X-Sample-Rate"))||24000; hg.rate=sr;
+    const rd=r.body.getReader();
+    while(true){const{done,value}=await rd.read();if(done)break;
+      if(value&&value.byteLength){if(ttfb===null){ttfb=Math.round(performance.now()-t0);status("TTFB "+ttfb+" ms");}playPCM16(value,sr);hg.parts.push(value);}}
+    if(hg.parts.length){ hg.wav=buildWav(hg.parts,sr);
+      $("hgPlayer").src=URL.createObjectURL(hg.wav); $("hgDl").disabled=false;
+      status("Fertig — "+Math.round(hg.parts.reduce((s,a)=>s+a.byteLength,0)/2/sr)+" s. TTFB "+ttfb+" ms.");
+    } else status("Kein Audio.",false);
+    progress($("hgProg"),100);
+  }catch(e){if(e.name!=="AbortError")status("Fehler: "+e.message,false);else status("Higgs evtl. nicht erreichbar ("+HIGGS_URL+").");}
+  finally{btn.disabled=false;progress($("hgProg"),-1);}
+};
+$("hgStopBtn").onclick=()=>{if(abortCtrl)abortCtrl.abort();};
+$("hgDl").onclick=async()=>{
+  if(!hg.wav)return; const fmt=$("hgFmt").value;
+  try{ if(fmt==="wav")triggerDownload(hg.wav,"higgs.wav"); else await convertDownload(hg.wav,"higgs",fmt); status("Download gestartet."); }
+  catch(e){status("Fehler Download: "+e.message,false);}
+};
+
+/* ============ STIMMEN-BIBLIOTHEK ============ */
+async function testVoice(name){
+  const p={model:"voxcpm2",input:$("testSentence").value||"Hallo.",voice:name,voice_mode:"reference",response_format:"wav"};
+  status("Teste Stimme '"+name+"'…");
+  try{
+    const r=await fetch("/v1/audio/speech/stream",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(p)});
+    if(!r.ok){let m=r.statusText;try{m=(await r.json()).detail||m;}catch(e){}throw new Error(m);}
+    const sr=Number(r.headers.get("X-Sample-Rate"))||48000;
+    const rd=r.body.getReader();
+    while(true){const{done,value}=await rd.read();if(done)break; if(value&&value.byteLength)playPCM16(value,sr);}
+    status("Test abgespielt.");
+  }catch(e){status("Fehler: "+e.message,false);}
+}
+async function loadLib(){
+  try{
+    const j=await(await fetch("/voices")).json();
+    const sys=j.system_voices||[], cus=j.custom_voices||[], det=j.custom_voice_details||{};
+    const el=$("libList");
+    if(!sys.length&&!cus.length){el.innerHTML='<p class="hint">Keine Stimmen vorhanden.</p>';return;}
+    el.innerHTML="";
+    sys.forEach(n=>{
+      const d=document.createElement("div"); d.className="voice";
+      d.innerHTML='<div><strong>'+n+'</strong> <span class="tag">System</span></div>'+
+        '<button class="btn sec" onclick="testVoice(\''+n+'\')">Testen</button>';
+      el.appendChild(d);
+    });
+    cus.forEach(n=>{
+      const d=document.createElement("div"); d.className="voice";
+      const rt=det[n]?"<div class='meta'>Reftext: "+esc(det[n])+"</div>":"";
+      d.innerHTML='<div><strong>'+n+'</strong> <span class="tag">Custom</span>'+rt+'</div>'+
+        '<button class="btn sec" onclick="testVoice(\''+n+'\')">Testen</button>'+
+        '<button class="btn danger" onclick="delVoice(\''+n+'\')">Löschen</button>';
+      el.appendChild(d);
+    });
+  }catch(e){status("Fehler Bibliothek: "+e.message,false);}
+}
+async function delVoice(name){
+  if(!confirm("Stimme '"+name+"' löschen?"))return;
+  try{const r=await fetch("/v1/voices/"+encodeURIComponent(name),{method:"DELETE"});
+    if(!r.ok)throw new Error((await r.json()).detail||r.statusText);
+    status("Stimme '"+name+"' gelöscht."); loadVox(); loadLib(); loadHg();
+  }catch(e){status("Fehler Löschen: "+e.message,false);}
+}
+$("libCreateBtn").onclick=async()=>{
+  const name=$("libName").value.trim(), file=$("libFile").files[0];
+  if(!name||!file){status("Name + Datei angeben.",false);return;}
+  const fd=new FormData();
+  fd.append("voice_name",name); fd.append("prompt_text",$("libReftext").value.trim()); fd.append("file",file);
+  try{const r=await fetch("/v1/voices/upload",{method:"POST",body:fd});const j=await r.json();
+    if(!r.ok)throw new Error(j.detail||r.statusText);
+    status("Stimme '"+name+"' erstellt ("+j.mode+")"); loadVox(); loadLib(); loadHg();
+  }catch(e){status("Fehler: "+e.message,false);}
+};
+
+loadVox(); loadHg(); loadLib();
+</script>
 </body>
 </html>

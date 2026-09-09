@@ -17,12 +17,13 @@ import numpy as np
 import sounddevice as sd
 import uvicorn
 import pathlib
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, UploadFile, File, Form
 from fastapi.responses import (
     StreamingResponse,
     JSONResponse,
     HTMLResponse,
     Response,
+    FileResponse,
 )
 from fastapi.middleware.cors import CORSMiddleware
 import soundfile
@@ -738,6 +739,31 @@ def compile_voice_feature_cache_from_audio(
         )
 
 
+def _compile_custom_voice(name: str, audio_path: str, prompt_text_val: str) -> str:
+    """Baue VoxCPM2-Cache + name.txt aus einer Audiodatei. Gibt Modus zurueck."""
+    os.makedirs(CUSTOM_VOICE_CACHE_DIR, exist_ok=True)
+    VOICE_FEATURE_CACHE_MEMORY.pop((name, "reference"), None)
+    VOICE_FEATURE_CACHE_MEMORY.pop((name, "prompt"), None)
+    for stale_suffix in (
+        ".embed.npy", ".prompt.embed.npy", ".prompt.cond.npy",
+        ".prompt.decode_context.npy", ".npy",
+    ):
+        stale_path = os.path.join(CUSTOM_VOICE_CACHE_DIR, f"{name}{stale_suffix}")
+        if os.path.exists(stale_path):
+            os.unlink(stale_path)
+    VOICE_STORE.remove_lm_prefix_caches(name)
+
+    compile_voice_feature_cache_from_audio(name, audio_path)
+    txt_path = os.path.join(CUSTOM_VOICE_CACHE_DIR, f"{name}.txt")
+    if prompt_text_val:
+        compile_voice_feature_cache_from_audio(name, audio_path, prompt=True)
+        with open(txt_path, "w", encoding="utf-8") as f:
+            f.write(prompt_text_val)
+        return "reference_plus_continuation"
+    if os.path.exists(txt_path):
+        os.unlink(txt_path)
+    return "reference"
+
 def get_lm_cache_length() -> int | None:
     return (
         int(generator.lm_cache_length)
@@ -1265,38 +1291,8 @@ async def create_voice(request: CreateVoiceRequest):
         raise HTTPException(status_code=400, detail=f"Audio not found: {audio_path}")
 
     try:
-        os.makedirs(CUSTOM_VOICE_CACHE_DIR, exist_ok=True)
-        VOICE_FEATURE_CACHE_MEMORY.pop((name, "reference"), None)
-        VOICE_FEATURE_CACHE_MEMORY.pop((name, "prompt"), None)
-        for stale_suffix in (
-            ".embed.npy",
-            ".prompt.embed.npy",
-            ".prompt.cond.npy",
-            ".prompt.decode_context.npy",
-            ".npy",
-        ):
-            stale_path = os.path.join(CUSTOM_VOICE_CACHE_DIR, f"{name}{stale_suffix}")
-            if os.path.exists(stale_path):
-                os.unlink(stale_path)
-        VOICE_STORE.remove_lm_prefix_caches(name)
-
-        compile_voice_feature_cache_from_audio(name, audio_path)
-        txt_path = os.path.join(CUSTOM_VOICE_CACHE_DIR, f"{name}.txt")
-        if prompt_text_val:
-            compile_voice_feature_cache_from_audio(name, audio_path, prompt=True)
-            with open(txt_path, "w", encoding="utf-8") as f:
-                f.write(prompt_text_val)
-            mode = "reference_plus_continuation"
-        else:
-            if os.path.exists(txt_path):
-                os.unlink(txt_path)
-            mode = "reference"
-
-        return {
-            "status": "success",
-            "message": f"Voice '{name}' created.",
-            "mode": mode,
-        }
+        mode = _compile_custom_voice(name, audio_path, prompt_text_val)
+        return {"status": "success", "message": f"Voice '{name}' created.", "mode": mode}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed: {e}")
 
@@ -1306,11 +1302,20 @@ async def get_available_voices():
     voices = VOICE_STORE.available()
     system_voices = VOICE_STORE.names_from_dir(VOICE_CACHE_DIR)
     custom_voices = VOICE_STORE.names_from_dir(CUSTOM_VOICE_CACHE_DIR)
+    custom_details = {}
+    for v in custom_voices:
+        txt_path = os.path.join(CUSTOM_VOICE_CACHE_DIR, f"{v}.txt")
+        if os.path.exists(txt_path):
+            with open(txt_path, "r", encoding="utf-8") as f:
+                custom_details[v] = f.read().strip()
+        else:
+            custom_details[v] = ""
     return {
         "voices": voices,
         "count": len(voices),
         "system_voices": system_voices,
         "custom_voices": custom_voices,
+        "custom_voice_details": custom_details,
         "included_voice_cache_directory": VOICE_CACHE_DIR,
         "included_voice_cache_directories": VOICE_CACHE_DIRS,
         "custom_cache_directory": CUSTOM_VOICE_CACHE_DIR,
@@ -1365,6 +1370,62 @@ async def delete_voice(voice_name: str):
 @app.get("/health")
 async def health_check():
     is_processing = CURRENT_JOB is not None
+
+@app.post("/v1/voices/upload")
+async def upload_voice(
+    voice_name: str = Form(...),
+    prompt_text: str = Form(""),
+    file: UploadFile = File(...),
+):
+    name = VOICE_STORE.validate(voice_name)
+    if VOICE_STORE.is_default(name):
+        raise HTTPException(status_code=403, detail=f"'{name}' ist eine Systemstimme")
+    embed_path = os.path.join(CUSTOM_VOICE_CACHE_DIR, f"{name}.embed.npy")
+    if os.path.exists(embed_path):
+        raise HTTPException(status_code=409,
+                            detail=f"'{name}' existiert bereits. Anderen Namen wählen oder erst löschen.")
+
+    if not PYDUB_AVAILABLE:
+        raise HTTPException(status_code=501,
+                            detail="pydub für die Konvertierung nötig: pip install pydub (und ffmpeg)")
+
+    os.makedirs(CUSTOM_VOICE_CACHE_DIR, exist_ok=True)
+    ext = os.path.splitext(file.filename or "")[1].lower()
+    tmp = os.path.join(CUSTOM_VOICE_CACHE_DIR, f"__{name}_in{ext or '.wav'}")
+    with open(tmp, "wb") as f:
+        import shutil
+        shutil.copyfileobj(file.file, f)
+
+    try:
+        seg = AudioSegment.from_file(tmp)
+        seg = seg.set_channels(1).set_frame_rate(16000)
+        dest = os.path.join(CUSTOM_VOICE_CACHE_DIR, f"{name}.wav")
+        seg.export(dest, format="wav")
+        os.remove(tmp)
+
+        prompt_text_val = (prompt_text or "").strip()
+        mode = _compile_custom_voice(name, dest, prompt_text_val)
+        return {"status": "success", "message": f"Stimme '{name}' erstellt.",
+                "mode": mode, "voice": name}
+    except Exception as e:
+        if os.path.exists(tmp):
+            os.remove(tmp)
+        raise HTTPException(status_code=500, detail=f"Fehler: {e}")
+
+
+@app.post("/api/convert")
+async def convert_audio(file: UploadFile = File(...), to_format: str = Form("mp3")):
+    if not PYDUB_AVAILABLE:
+        raise HTTPException(status_code=501, detail="pydub nicht installiert: pip install pydub")
+    data = await file.read()
+    seg = AudioSegment.from_file(io.BytesIO(data))
+    to_format = to_format.lower()
+    export_format, media_type = PYDUB_AUDIO_FORMATS.get(to_format, (None, None))
+    if export_format is None:
+        raise HTTPException(status_code=400, detail=f"Unsupported format: {to_format}")
+    buf = io.BytesIO()
+    seg.export(buf, format=export_format)
+    return Response(content=buf.getvalue(), media_type=media_type)
     return {
         "status": "healthy",
         "is_processing": is_processing,
