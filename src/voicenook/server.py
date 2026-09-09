@@ -1710,6 +1710,10 @@ def main():
     )
     # ---- VoiceNook Optionen ----
     parser.add_argument(
+        "--host", type=str, default="0.0.0.0",
+        help="Bind-Adresse (Standard: 0.0.0.0).",
+    )
+    parser.add_argument(
         "--port", "-p", type=int, default=8080,
         help="WebUI-Port (Standard: 8080).",
     )
