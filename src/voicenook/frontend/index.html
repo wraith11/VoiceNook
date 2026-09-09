@@ -74,7 +74,10 @@
   <!-- ============ VOXCPM2 ============ -->
   <div class="pane active" id="paneVox">
     <div class="card">
-      <label data-i18n="mode">Modus</label>
+      <div class="row" style="justify-content:space-between">
+        <label data-i18n="mode" style="margin:0">Modus</label>
+        <span class="hstatus" id="voxStatus"><span class="dot" id="voxDot"></span><span id="voxStatusTxt">VoxCPM2</span></span>
+      </div>
       <select id="voxMode">
         <option value="design" data-i18n="mode_design">Voice Design (nur Beschreibung)</option>
         <option value="ref" data-i18n="mode_ref">Clone (Reference + Beschreibung)</option>
@@ -186,7 +189,7 @@
 <script>
 "use strict";
 const $=id=>document.getElementById(id);
-let HIGGS_URL="http://127.0.0.1:8006";
+let HIGGS_URL="/higgs";
 let CFG={lang:"de",cfg_default:2.0,steps_default:20,higgs_enabled:true,higgs_url:HIGGS_URL};
 let genMode="play";   // "play" = Generate & play, "only" = Generate only
 let abortCtrl=null;
@@ -315,28 +318,43 @@ function updateGenBtn(){
   $("optOnly").classList.toggle("on",genMode==="only");
 }
 
-/* ---------- Higgs Status ---------- */
+/* ---------- Modell-Status (VoxCPM2 + Higgs) ---------- */
+let voxLoaded=false, hgLoaded=false;
 function setHgStatus(state){
-  const el=$("hgStatus"),dot=$("hgDot"),spin=$("hgStatus").querySelector(".spin");
+  const el=$("hgStatus"),dot=$("hgDot");
   el.classList.remove("on");
   if(state==="active"){el.classList.add("on");$("hgStatusTxt").textContent=tr("hg_active");el.title=tr("hg_stop");}
   else if(state==="loading"){$("hgStatusTxt").textContent=tr("hg_loading");el.title="";}
   else if(state==="disabled"){$("hgStatusTxt").textContent=tr("hg_disabled");el.title="";}
   else{$("hgStatusTxt").textContent=tr("hg_idle");el.title=tr("hg_start");}
 }
-async function pollHiggs(startIfInactive){
-  if(!CFG.higgs_enabled){setHgStatus("disabled");return;}
-  try{
-    const j=await(await fetch("/api/higgs/status")).json();
-    hgRunning=!!j.running;
-    setHgStatus(hgRunning?"active":"idle");
-    if(!hgRunning&&startIfInactive){ setHgStatus("loading"); await fetch("/api/higgs/start",{method:"POST"}); pollHiggs(false); }
-  }catch(e){ setHgStatus("idle"); }
+function setVoxStatus(){
+  const el=$("voxStatus"),dot=$("voxDot");
+  el.classList.toggle("on",voxLoaded);
+  $("voxStatusTxt").textContent=voxLoaded?(CFG.lang==="en"?"VoxCPM2 loaded":"VoxCPM2 geladen"):(CFG.lang==="en"?"VoxCPM2 idle":"VoxCPM2 inaktiv");
+  el.title=voxLoaded?(CFG.lang==="en"?"Unload":"Entladen"):(CFG.lang==="en"?"Load":"Laden");
 }
+async function pollModels(){
+  try{
+    const j=await(await fetch("/api/models")).json();
+    voxLoaded=!!j.vox_loaded; hgLoaded=!!j.higgs_loaded;
+    setVoxStatus(); setHgStatus(hgLoaded?"active":"idle");
+  }catch(e){ setVoxStatus(); setHgStatus("idle"); }
+}
+$("voxStatus").onclick=async()=>{
+  try{
+    if(voxLoaded){ await fetch("/api/models/vox/unload",{method:"POST"}); }
+    else { await fetch("/api/models/vox/load",{method:"POST"}); }
+    pollModels();
+  }catch(e){status(tr("error",{msg:e.message}),false);}
+};
 $("hgStatus").onclick=async()=>{
   if(!CFG.higgs_enabled)return;
-  if(hgRunning){ await fetch("/api/higgs/stop",{method:"POST"}); hgRunning=false; setHgStatus("idle"); }
-  else { setHgStatus("loading"); await fetch("/api/higgs/start",{method:"POST"}); pollHiggs(false); }
+  try{
+    if(hgLoaded){ await fetch("/api/models/higgs/unload",{method:"POST"}); }
+    else { setHgStatus("loading"); await fetch("/api/models/higgs/load",{method:"POST"}); }
+    pollModels();
+  }catch(e){status(tr("error",{msg:e.message}),false);pollModels();}
 };
 
 /* ---------- VOXCPM2 ---------- */
@@ -456,12 +474,13 @@ async function loadHg(){
 }
 async function ensureHiggs(){
   if(!CFG.higgs_enabled)return false;
-  if(!hgRunning){
+  if(!hgLoaded){
     setHgStatus("loading");
-    try{await fetch("/api/higgs/start",{method:"POST"});}catch(e){}
-    // warten bis Higgs bereit ist
-    for(let i=0;i<30;i++){ await new Promise(r=>setTimeout(r,1000));
-      try{const j=await(await fetch(HIGGS_URL+"/health")).json(); if(j.status==="healthy"){hgRunning=true;setHgStatus("active");return true;} }catch(e){}
+    try{await fetch("/api/models/higgs/load",{method:"POST"});}catch(e){}
+    // warten bis Higgs-Modell geladen ist
+    for(let i=0;i<60;i++){ await new Promise(r=>setTimeout(r,1000));
+      try{const j=await(await fetch(HIGGS_URL+"/health")).json(); if(j.status==="healthy"&&j.model_loaded){hgLoaded=true;setHgStatus("active");return true;} }catch(e){}
+      try{const m=await(await fetch("/api/models")).json(); if(m.higgs_loaded){hgLoaded=true;setHgStatus("active");return true;} }catch(e){}
     }
     setHgStatus("idle"); return false;
   }
@@ -575,8 +594,9 @@ async function init(){
   if(!CFG.higgs_enabled){ $("tabHiggs").style.display="none"; $("paneHiggs").classList.remove("active"); setHgStatus("disabled"); }
   setHgStatus(CFG.higgs_enabled?"idle":"disabled");
   loadVox(); loadLib(); loadHg();
-  pollHiggs(false);
-  // Tab-Buttons neu beschriften (i18n)
+  pollModels();
+  // periodisch aktualisieren (Idle-Unload sichtbar machen)
+  setInterval(pollModels, 10000);
 }
 init();
 </script>

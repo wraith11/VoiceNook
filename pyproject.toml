@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "voicenook"
-version = "0.1.0"
+version = "0.2.0"
 description = "A light voice design / cloning studio for macOS (VoxCPM2 + Higgs v3)"
 requires-python = ">=3.10,<3.13"
 license = { text = "MIT" }
@@ -27,6 +27,7 @@ dependencies = [
     "inflect",
     "wetext",
     "regex",
+    "mlx-audio",
 ]
 
 [project.optional-dependencies]
@@ -39,7 +40,7 @@ Homepage = "https://github.com/wraith11/VoiceNook"
 Original = "https://github.com/0seba/VoxCPMANE"
 
 [project.scripts]
-voicenook-server = "voxcpmane.server:main"
+voicenook-server = "voicenook.server:main"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/voxcpmane"]
+packages = ["src/voicenook"]

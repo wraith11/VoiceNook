@@ -1,4 +1,4 @@
-"""Shared CoreML loading and metadata utilities for VoxCPMANE2."""
+"""Shared CoreML loading and metadata utilities for VoiceNook."""
 
 from __future__ import annotations
 

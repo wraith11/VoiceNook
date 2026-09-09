@@ -1,4 +1,4 @@
-"""VoxCPM2 TTS HTTP server — OpenAI-compatible API.
+"""VoxCPM2 TTS HTTP server — OpenAI-compatible API (VoiceNook).
 
 Adapted from VoxCPMANE server.py. Uses VoxCPM2Generator for inference.
 """
@@ -33,8 +33,6 @@ import aiofiles
 from huggingface_hub import snapshot_download
 import asyncio
 import argparse
-import subprocess
-import sys
 import ftfy
 
 from .generator import VoxCPM2Generator
@@ -48,7 +46,7 @@ from .metrics import (
     _mark_first_byte,
     _print_final_metrics,
 )
-import voxcpmane.metrics as metrics
+import voicenook.metrics as metrics
 
 try:
     from pydub import AudioSegment
@@ -666,7 +664,7 @@ def load_voice_feature_cache(voice_name: str, *, prompt: bool = False) -> np.nda
             detail=(
                 f"Voice cache '{cache_name}' is not in the current feature-cache "
                 f"format. Expected (T, {generator.hidden_size}), got {embed.shape}. "
-                "Regenerate the voice cache with this VoxCPMANE2 version."
+                "Regenerate the voice cache with this VoiceNook version."
             ),
         )
     VOICE_FEATURE_CACHE_MEMORY[memory_key] = embed
@@ -1142,6 +1140,9 @@ async def poll_queue_for_chunks(output_queue, poll_interval=0.005, on_metric=Non
 
 @app.post("/v1/audio/speech")
 async def create_speech(request: SpeechRequest):
+    _touch_vox_activity()
+    if not vox_load():
+        raise HTTPException(status_code=503, detail="VoxCPM2 konnte nicht geladen werden")
     audio_format = (request.response_format or "wav").lower()
     validate_audio_format(audio_format)
 
@@ -1175,6 +1176,9 @@ async def create_speech(request: SpeechRequest):
 
 @app.post("/v1/audio/speech/stream")
 async def stream_speech(request: SpeechRequest):
+    _touch_vox_activity()
+    if not vox_load():
+        raise HTTPException(status_code=503, detail="VoxCPM2 konnte nicht geladen werden")
     job = submit_generation_job(request)
 
     async def audio_stream():
@@ -1200,6 +1204,9 @@ async def stream_speech(request: SpeechRequest):
 @app.post("/v1/audio/speech/playback")
 async def playback_speech(request: SpeechRequest):
     global CURRENT_JOB
+    _touch_vox_activity()
+    if not vox_load():
+        raise HTTPException(status_code=503, detail="VoxCPM2 konnte nicht geladen werden")
     job = submit_generation_job(request)
     CURRENT_JOB = job
 
@@ -1270,6 +1277,9 @@ async def cancel_generation():
 
 @app.post("/v1/voices")
 async def create_voice(request: CreateVoiceRequest):
+    _touch_vox_activity()
+    if not vox_load():
+        raise HTTPException(status_code=503, detail="VoxCPM2 konnte nicht geladen werden")
     name = VOICE_STORE.validate(request.voice_name)
     if VOICE_STORE.is_default(name):
         raise HTTPException(status_code=403, detail=f"'{name}' is a system voice")
@@ -1379,6 +1389,9 @@ async def upload_voice(
     prompt_text: str = Form(""),
     file: UploadFile = File(...),
 ):
+    _touch_vox_activity()
+    if not vox_load():
+        raise HTTPException(status_code=503, detail="VoxCPM2 konnte nicht geladen werden")
     name = VOICE_STORE.validate(voice_name)
     if VOICE_STORE.is_default(name):
         raise HTTPException(status_code=403, detail=f"'{name}' ist eine Systemstimme")
@@ -1439,31 +1452,58 @@ async def convert_audio(file: UploadFile = File(...), to_format: str = Form("mp3
 
 
 # ============================================================
-#  VoiceNook: Konfiguration & Higgs-Lifecycle
+#  VoiceNook: Konfiguration & Modell-Lifecycle (VoxCPM2 + Higgs)
 # ============================================================
-APP_LANG = "de"
+APP_LANG = "en"
 CFG_DEFAULT = 2.0
 STEPS_DEFAULT = 20
 HIGGS_ENABLED = True
-HIGGS_URL = "http://127.0.0.1:8006"
-HIGGS_PROC = None
-HIGGS_LOCK = threading.Lock()
+HIGGS_URL = "/higgs"          # In-process Mount-Pfad (same-origin)
+SINGLE_MODEL = False          # Nur ein Modell gleichzeitig laden
+MODEL_IDLE_SECONDS = 300      # Inaktivitaet bis zum Entladen
+MODEL_LOCK = threading.Lock()
+LAST_VOX_ACTIVITY = time.time()
+LOAD_MODEL_KWARGS = {}
 
 
-def _higgs_script_path() -> str:
-    # higgs_server.py liegt im Repo-Root: src/voxcpmane/server.py -> ../../../
-    candidates = [
-        os.path.join(pathlib.Path(__file__).resolve().parent.parent.parent, "higgs_server.py"),
-        os.path.join(os.getcwd(), "higgs_server.py"),
-    ]
-    for c in candidates:
-        if os.path.exists(c):
-            return c
-    return candidates[0]
+def _touch_vox_activity():
+    global LAST_VOX_ACTIVITY
+    LAST_VOX_ACTIVITY = time.time()
 
 
-def _higgs_running() -> bool:
-    return HIGGS_PROC is not None and HIGGS_PROC.poll() is None
+def vox_loaded() -> bool:
+    return generator is not None
+
+
+def vox_load() -> bool:
+    """Laedt das VoxCPM2-Modell bei Bedarf (thread-sicher)."""
+    global generator
+    with MODEL_LOCK:
+        if generator is not None:
+            _touch_vox_activity()
+            return True
+        if SINGLE_MODEL:
+            from . import higgs_server as hs
+            hs.unload_model()
+        try:
+            print("[*] Lade VoxCPM2-Modell ...", flush=True)
+            load_model(**LOAD_MODEL_KWARGS)
+            _touch_vox_activity()
+            return True
+        except Exception as e:
+            print(f"[!] VoxCPM2-Laden fehlgeschlagen: {e}", flush=True)
+            return False
+
+
+def vox_unload():
+    """Entlaedt das VoxCPM2-Modell und gibt den RAM frei."""
+    global generator
+    with MODEL_LOCK:
+        if generator is not None:
+            generator = None
+            import gc
+            gc.collect()
+            print("[*] VoxCPM2-Modell entladen (RAM freigegeben).", flush=True)
 
 
 @app.get("/api/config")
@@ -1474,42 +1514,66 @@ async def api_config():
         "steps_default": STEPS_DEFAULT,
         "higgs_enabled": HIGGS_ENABLED,
         "higgs_url": HIGGS_URL,
+        "single_model": SINGLE_MODEL,
+        "idle_timeout_seconds": MODEL_IDLE_SECONDS,
     }
 
 
-@app.get("/api/higgs/status")
-async def higgs_status():
-    return {"running": _higgs_running(), "enabled": HIGGS_ENABLED}
+@app.get("/api/models")
+async def api_models():
+    from . import higgs_server as hs
+    return {
+        "vox_loaded": vox_loaded(),
+        "higgs_loaded": hs.is_loaded(),
+        "vox_enabled": True,
+        "higgs_enabled": HIGGS_ENABLED,
+        "single_model": SINGLE_MODEL,
+    }
 
 
-@app.post("/api/higgs/start")
-async def higgs_start():
-    global HIGGS_PROC
+@app.post("/api/models/vox/load")
+async def api_vox_load():
+    await asyncio.to_thread(vox_load)
+    return {"vox_loaded": vox_loaded()}
+
+
+@app.post("/api/models/vox/unload")
+async def api_vox_unload():
+    vox_unload()
+    return {"vox_loaded": vox_loaded()}
+
+
+@app.post("/api/models/higgs/load")
+async def api_higgs_load():
+    from . import higgs_server as hs
     if not HIGGS_ENABLED:
         raise HTTPException(status_code=400, detail="Higgs ist deaktiviert")
-    with HIGGS_LOCK:
-        if _higgs_running():
-            return {"running": True}
-        script = _higgs_script_path()
-        HIGGS_PROC = subprocess.Popen(
-            [sys.executable, "-u", script, "--port", "8006"],
-            cwd=os.path.dirname(script) or os.getcwd(),
-        )
-    return {"running": True}
+    with MODEL_LOCK:
+        if SINGLE_MODEL:
+            vox_unload()
+    await asyncio.to_thread(hs.load_model)
+    return {"higgs_loaded": hs.is_loaded()}
 
 
-@app.post("/api/higgs/stop")
-async def higgs_stop():
-    global HIGGS_PROC
-    with HIGGS_LOCK:
-        if HIGGS_PROC is not None and HIGGS_PROC.poll() is None:
-            HIGGS_PROC.terminate()
-            HIGGS_PROC = None
-    return {"running": False}
+@app.post("/api/models/higgs/unload")
+async def api_higgs_unload():
+    from . import higgs_server as hs
+    hs.unload_model()
+    return {"higgs_loaded": hs.is_loaded()}
+
+
+def _model_idle_watchdog():
+    """Entlaedt Modelle nach Inaktivitaet, damit der Server im Idle ultra-light ist."""
+    from . import higgs_server as hs
+    while True:
+        time.sleep(20)
+        now = time.time()
+        if vox_loaded() and (now - LAST_VOX_ACTIVITY) > MODEL_IDLE_SECONDS:
+            vox_unload()
+        if hs.is_loaded() and (now - hs.last_activity()) > MODEL_IDLE_SECONDS:
+            hs.unload_model()
 def main():
-    parser = argparse.ArgumentParser(description="VoxCPM2 TTS Server")
-    parser.add_argument("--port", "-p", type=int, default=8000)
-    parser.add_argument("--host", type=str, default="0.0.0.0")
+    parser = argparse.ArgumentParser(description="VoxCPM2 TTS Server (VoiceNook)")
     parser.add_argument(
         "--cache-dir", type=str, default=os.path.expanduser("~/.cache/ane_tts")
     )
@@ -1659,8 +1723,16 @@ def main():
     )
     # ---- VoiceNook Optionen ----
     parser.add_argument(
-        "--lang", type=str, choices=["de", "en"], default="de",
-        help="WebUI-Sprache: de oder en (Standard: de).",
+        "--host", type=str, default="0.0.0.0",
+        help="Bind-Adresse (Standard: 0.0.0.0).",
+    )
+    parser.add_argument(
+        "--port", "-p", type=int, default=8080,
+        help="WebUI-Port (Standard: 8080).",
+    )
+    parser.add_argument(
+        "--lang", type=str, choices=["de", "en"], default="en",
+        help="WebUI-Sprache: de oder en (Standard: en).",
     )
     parser.add_argument(
         "--cfg-default", type=float, default=2.0,
@@ -1673,17 +1745,27 @@ def main():
     )
     parser.add_argument(
         "--no-higgs", action="store_true",
-        help="Higgs-Tab ausblenden und Higgs-Server nie starten (RAM-schwache Systeme).",
+        help="Higgs-Tab ausblenden und Higgs nie laden (RAM-schwache Systeme).",
     )
     parser.add_argument(
-        "--higgs-url", type=str, default="http://127.0.0.1:8006",
-        help="Basis-URL des Higgs-Servers (Standard: http://127.0.0.1:8006).",
+        "--single-model", action="store_true",
+        help="Verhindert, dass VoxCPM2 und Higgs gleichzeitig geladen sind "
+             "(fuer schwache Systeme). Standard: beide duerfen geladen sein.",
+    )
+    parser.add_argument(
+        "--idle-timeout", type=int, default=5,
+        help="Minuten Inaktivitaet bis Modelle automatisch entladen werden "
+             "(Standard: 5). 0 deaktiviert das Entladen.",
+    )
+    parser.add_argument(
+        "--higgs-model", type=str, default="whitelabel/mlx-q6-higgs-tts-3-4b",
+        help="Higgs-Modell-Name (Standard: whitelabel/mlx-q6-higgs-tts-3-4b).",
     )
 
     args = parser.parse_args()
 
     global CUSTOM_VOICE_CACHE_DIR, APP_LANG, CFG_DEFAULT, STEPS_DEFAULT
-    global HIGGS_ENABLED, HIGGS_URL
+    global HIGGS_ENABLED, HIGGS_URL, SINGLE_MODEL, MODEL_IDLE_SECONDS, LOAD_MODEL_KWARGS
     CUSTOM_VOICE_CACHE_DIR = args.cache_dir
     metrics.LIVE_RTF_METRICS = str(args.live_rtf)
     os.makedirs(CUSTOM_VOICE_CACHE_DIR, exist_ok=True)
@@ -1692,20 +1774,33 @@ def main():
     CFG_DEFAULT = args.cfg_default
     STEPS_DEFAULT = args.steps_default
     HIGGS_ENABLED = not args.no_higgs
-    HIGGS_URL = args.higgs_url
+    HIGGS_URL = "/higgs"
+    SINGLE_MODEL = args.single_model
+    if args.idle_timeout and args.idle_timeout > 0:
+        MODEL_IDLE_SECONDS = args.idle_timeout * 60
 
-    load_model(
-        **{
-            k: v
-            for k, v in vars(args).items()
-            if k not in {"cache_dir", "host", "port", "live_rtf"}
-        }
-    )
+    # Lade-Parameter fuer VoxCPM2 fuer spateres On-Demand-Laden merken
+    LOAD_MODEL_KWARGS = {
+        k: v for k, v in vars(args).items()
+        if k not in {"cache_dir", "host", "port", "live_rtf", "lang", "cfg_default",
+                     "steps_default", "no_higgs", "single_model", "idle_timeout",
+                     "higgs_model"}
+    }
 
-    print(f"🚀 Starting VoxCPM2 server on {args.host}:{args.port}")
+    # Higgs in-process mounten + konfigurieren
+    from . import higgs_server as hs
+    app.mount("/higgs", hs.app, name="higgs")
+    hs.configure(model=args.higgs_model, voice_dir=args.cache_dir,
+                 idle_minutes=args.idle_timeout or 5)
+
+    # Idle-Watchdog starten (entlaedt Modelle, damit der Server im Idle ultra-light ist)
+    threading.Thread(target=_model_idle_watchdog, daemon=True).start()
+
+    print(f"🚀 VoiceNook server auf http://{args.host}:{args.port}")
+    print(f"   VoxCPM2: on-demand (Idle-Unload {MODEL_IDLE_SECONDS}s)")
+    print(f"   Higgs:   in-process unter /higgs (Idle-Unload {MODEL_IDLE_SECONDS}s)")
+    print(f"   Sprache: {APP_LANG} | single-model: {SINGLE_MODEL}")
     print(f"   Included voices: {VOICE_CACHE_DIR}")
-    print(f"   Custom cache: {CUSTOM_VOICE_CACHE_DIR}")
-    print(f"   Voices: {len(VOICE_STORE.available())}")
     uvicorn.run(app, host=args.host, port=args.port, log_level="info")
 
 
