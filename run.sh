@@ -17,7 +17,7 @@ if [ ! -d "$VENV_DIR" ]; then
 fi
 source "$VENV_DIR/bin/activate"
 
-echo "==> Starte VoiceNook auf http://127.0.0.1:8080 ..."
+echo "==> Starte VoiceNook ..."
 echo "    VoxCPM2 + Higgs laden on-demand (Idle-Unload nach 5 min)."
 exec voicenook-server --host 0.0.0.0 --port 8080 \
     --lm-mode single-length --lm-prefill-chunk-size 64 \
