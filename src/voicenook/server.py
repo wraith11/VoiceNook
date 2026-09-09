@@ -1,4 +1,4 @@
-"""VoxCPM2 TTS HTTP server — OpenAI-compatible API.
+"""VoxCPM2 TTS HTTP server — OpenAI-compatible API (VoiceNook).
 
 Adapted from VoxCPMANE server.py. Uses VoxCPM2Generator for inference.
 """
