@@ -399,7 +399,7 @@ $("voxStatus").onclick=async()=>{
     if(voxLoaded){ await fetch("/api/models/vox/unload",{method:"POST"}); }
     else { await fetch("/api/models/vox/load",{method:"POST"}); }
     pollModels();
-  }catch(e){status(tr("error",{msg:e.message}),false);}
+  }catch(e){rstatus("voxResultMsg",tr("error",{msg:e.message}),false);}
 };
 $("hgStatus").onclick=async()=>{
   if(!CFG.higgs_enabled)return;
@@ -407,7 +407,7 @@ $("hgStatus").onclick=async()=>{
     if(hgLoaded){ await fetch("/api/models/higgs/unload",{method:"POST"}); }
     else { setHgStatus("loading"); await fetch("/api/models/higgs/load",{method:"POST"}); }
     pollModels();
-  }catch(e){status(tr("error",{msg:e.message}),false);pollModels();}
+  }catch(e){rstatus("hgResultMsg",tr("error",{msg:e.message}),false);pollModels();}
 };
 
 /* ---------- VOXCPM2 ---------- */
@@ -419,7 +419,7 @@ async function loadVox(){
     const sel=$("voiceSel"),cur=sel.value; sel.innerHTML="";
     [...voicesVox.custom,...voicesVox.system].forEach(n=>{const o=document.createElement("option");o.value=n;o.textContent=n;sel.appendChild(o);});
     if(cur&&[...voicesVox.custom,...voicesVox.system].includes(cur))sel.value=cur;
-  }catch(e){status(tr("error",{msg:e.message}),false);}
+  }catch(e){rstatus("libMsg",tr("error",{msg:e.message}),false);}
 }
 function voxModeChanged(){
   const m=$("voxMode").value;
