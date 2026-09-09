@@ -530,45 +530,45 @@ async function ensureHiggs(){
   return true;
 }
 $("hgGenBtn").onclick=async()=>{
-  if(!$("hgText").value.trim()){status(tr("enter_text"),false);return;}
-  const v=$("hgVoice").value; if(!v){status(tr("choose_voice"),false);return;}
+  if(!$("hgText").value.trim()){rstatus("hgResultMsg",tr("enter_text"),false);return;}
+  const v=$("hgVoice").value; if(!v){rstatus("hgResultMsg",tr("choose_voice"),false);return;}
   const btn=$("hgGenBtn"); btn.disabled=true;
-  status(tr("higgs_auto"));
-  if(!(await ensureHiggs())){status(tr("higgs_down"),false);btn.disabled=false;return;}
+  rstatus("hgResultMsg",tr("higgs_auto"));
+  showDots("hgDots");
+  if(!(await ensureHiggs())){rstatus("hgResultMsg",tr("higgs_down"),false);btn.disabled=false;stopDots();return;}
   hg={parts:[],rate:24000,wav:null};
   $("hgPlayer").src=""; $("hgDl").disabled=true;
-  progress($("hgProg"),0); const t0=performance.now(); let ttfb=null;
+  const t0=performance.now(); let ttfb=null;
   abortCtrl=new AbortController();
   const p={voice:v,text:$("hgText").value,temperature:+$("hgTemp").value,seam_frames:+$("hgSeam").value};
   const seed=$("hgSeed").value.trim(); if(seed!=="")p.seed=+seed;
   try{
-    const url = genMode==="only" ? "/api/synthesize" : "/api/synthesize/stream";
+    const url = hgGenMode==="only" ? "/api/synthesize" : "/api/synthesize/stream";
     const r=await fetch(HIGGS_URL+url,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(p),signal:abortCtrl.signal});
     if(!r.ok){let m=r.statusText;try{m=(await r.json()).detail||m;}catch(e){}throw new Error(m);}
     const sr=Number(r.headers.get("X-Sample-Rate"))||24000; hg.rate=sr;
-    if(genMode==="only"){
+    if(hgGenMode==="only"){
       const ab=await r.arrayBuffer();
       hg.wav=new Blob([ab],{type:"audio/wav"}); hg.parts=[ab];
       $("hgPlayer").src=URL.createObjectURL(hg.wav); $("hgDl").disabled=false;
-      status(tr("gen_only_done",{s:Math.round(ab.byteLength/2/sr)}));
+      rstatus("hgResultMsg",tr("gen_only_done",{s:Math.round(ab.byteLength/2/sr)}));
     } else {
       const rd=r.body.getReader();
       while(true){const{done,value}=await rd.read();if(done)break;
-        if(value&&value.byteLength){if(ttfb===null){ttfb=Math.round(performance.now()-t0);status(tr("gen_ttfb",{ms:ttfb}));}playPCM16(value,sr);hg.parts.push(value);}}
+        if(value&&value.byteLength){if(ttfb===null){ttfb=Math.round(performance.now()-t0);rstatus("hgResultMsg",tr("gen_ttfb",{ms:ttfb}));}playPCM16(value,sr);hg.parts.push(value);}}
       if(hg.parts.length){ hg.wav=buildWav(hg.parts,sr);
         $("hgPlayer").src=URL.createObjectURL(hg.wav); $("hgDl").disabled=false;
-        status(tr("gen_done",{s:Math.round(hg.parts.reduce((s,a)=>s+a.byteLength,0)/2/sr),ms:ttfb}));
-      } else status(tr("no_audio"),false);
+        rstatus("hgResultMsg",tr("gen_done",{s:Math.round(hg.parts.reduce((s,a)=>s+a.byteLength,0)/2/sr),ms:ttfb}));
+      } else rstatus("hgResultMsg",tr("no_audio"),false);
     }
-    progress($("hgProg"),100);
-  }catch(e){if(e.name!=="AbortError")status(tr("error",{msg:e.message}),false);else status(tr("aborted"));}
-  finally{btn.disabled=false;progress($("hgProg"),-1);}
+  }catch(e){if(e.name!=="AbortError")rstatus("hgResultMsg",tr("error",{msg:e.message}),false);else rstatus("hgResultMsg",tr("aborted"));}
+  finally{btn.disabled=false;stopDots();}
 };
 $("hgStopBtn").onclick=()=>{if(abortCtrl)abortCtrl.abort();};
 $("hgDl").onclick=async()=>{
   if(!hg.wav)return; const fmt=$("hgFmt").value;
-  try{ if(fmt==="wav")triggerDownload(hg.wav,"higgs.wav"); else await convertDownload(hg.wav,"higgs",fmt); status(tr("dl_start")); }
-  catch(e){status(tr("download_err",{msg:e.message}),false);}
+  try{ if(fmt==="wav")triggerDownload(hg.wav,"voice.wav"); else await convertDownload(hg.wav,"voice",fmt); rstatus("hgResultMsg",tr("dl_start")); }
+  catch(e){rstatus("hgResultMsg",tr("download_err",{msg:e.message}),false);}
 };
 
 /* ---------- STIMMEN-BIBLIOTHEK ---------- */
