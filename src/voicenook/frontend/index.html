@@ -70,7 +70,7 @@
   /* Higgs-Status */
   .hstatus{display:inline-flex;align-items:center;gap:.5rem;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:.35rem .7rem;font-size:.8rem;color:var(--mut);cursor:pointer;user-select:none}
   .hstatus:hover{border-color:var(--acc)}
-  .hstatus .dot{width:10px;height:10px;border-radius:50%;background:var(--err)}
+  .hstatus .dot{width:10px;height:10px;border-radius:50%;background:var(--warn,#e0a93a)}
   .hstatus.on .dot{background:var(--ok)}
   .hstatus .spin{width:10px;height:10px;border-radius:50%;border:2px solid var(--line);border-top-color:var(--acc);animation:spin 1s linear infinite;display:none}
   @keyframes spin{to{transform:rotate(360deg)}}
