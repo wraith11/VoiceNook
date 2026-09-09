@@ -628,7 +628,7 @@ async function loadLib(){
         '<button class="btn sec" onclick="testVoice(\''+n+'\')">'+(CFG.lang==="en"?"Test":"Testen")+'</button>';
       el.appendChild(d);
     });
-  }catch(e){status(tr("error",{msg:e.message}),false);}
+  }catch(e){rstatus("libMsg",tr("error",{msg:e.message}),false);}
 }
 async function saveDesc(name,desc){
   try{
