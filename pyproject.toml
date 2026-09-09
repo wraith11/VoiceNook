@@ -3,13 +3,12 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "voxcpmane2"
-version = "0.1.2"
-description = "VoxCPM2 TTS runtime + HTTP server for Apple Neural Engine"
+name = "voicenook"
+version = "0.1.0"
+description = "A light voice design / cloning studio for macOS (VoxCPM2 + Higgs v3)"
 requires-python = ">=3.10,<3.13"
 license = { text = "MIT" }
 readme = "README.md"
-
 
 dependencies = [
     "coremltools==9.0",
@@ -36,9 +35,11 @@ development = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/0seba/VoxCPMANE"
+Homepage = "https://github.com/wraith11/VoiceNook"
+Original = "https://github.com/0seba/VoxCPMANE"
 
 [project.scripts]
+voicenook-server = "voxcpmane.server:main"
 voxcpmane2-server = "voxcpmane.server:main"
 
 [tool.hatch.build.targets.wheel]
