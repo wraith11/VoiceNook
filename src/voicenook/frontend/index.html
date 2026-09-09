@@ -275,7 +275,7 @@ function getCtx(sr){
 }
 function playPCM16(ab,sr){
   const n=Math.floor(ab.byteLength/2); if(n<=0)return;
-  const i16=new Int16Array(ab,0,n), f32=new Float32Array(n);
+  const i16=new Int16Array(ab.buffer, ab.byteOffset, n), f32=new Float32Array(n);
   for(let i=0;i<n;i++) f32[i]=i16[i]/32768;
   const c=getCtx(sr), now=c.currentTime;
   if(nextT<now+0.12)nextT=now+0.12;
@@ -286,7 +286,7 @@ function playPCM16(ab,sr){
 function buildWav(parts,sr){
   let total=0; parts.forEach(a=>total+=Math.floor(a.byteLength/2));
   const pcm=new Int16Array(total); let off=0;
-  parts.forEach(ab=>{const n=Math.floor(ab.byteLength/2);pcm.set(new Int16Array(ab,0,n),off);off+=n;});
+  parts.forEach(ab=>{const n=Math.floor(ab.byteLength/2);pcm.set(new Int16Array(ab.buffer, ab.byteOffset, n),off);off+=n;});
   const buf=new ArrayBuffer(44+pcm.length*2),dv=new DataView(buf);
   const ws=(o,s)=>{for(let i=0;i<s.length;i++)dv.setUint8(o+i,s.charCodeAt(i));};
   ws(0,"RIFF");dv.setUint32(4,36+pcm.length*2,true);ws(8,"WAVE");
