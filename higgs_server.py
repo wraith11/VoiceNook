@@ -12,6 +12,7 @@ import argparse
 import io
 import os
 import re
+import threading
 import time
 import warnings
 import wave
@@ -27,6 +28,7 @@ warnings.filterwarnings("ignore")
 VOICE_DIR = os.path.expanduser("~/.cache/ane_tts")
 SR = 24000
 HOP = 960
+IDLE_TIMEOUT_SECONDS = 300  # Standard: 5 Minuten Inaktivitaet -> Auto-Stop
 
 app = FastAPI(title="VoiceNook Higgs TTS")
 app.add_middleware(
