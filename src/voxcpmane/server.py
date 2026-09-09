@@ -1657,13 +1657,42 @@ def main():
             "loaded. Use 0 to disable startup warmup."
         ),
     )
+    # ---- VoiceNook Optionen ----
+    parser.add_argument(
+        "--lang", type=str, choices=["de", "en"], default="de",
+        help="WebUI-Sprache: de oder en (Standard: de).",
+    )
+    parser.add_argument(
+        "--cfg-default", type=float, default=2.0,
+        help="Standardwert fuer cfg_value in der WebUI (Standard: 2.0).",
+    )
+    parser.add_argument(
+        "--steps-default", type=int, default=20,
+        help="Standardwert fuer inference_timesteps in der WebUI (Standard: 20). "
+             "Fuer langsamere Systeme z.B. 7.",
+    )
+    parser.add_argument(
+        "--no-higgs", action="store_true",
+        help="Higgs-Tab ausblenden und Higgs-Server nie starten (RAM-schwache Systeme).",
+    )
+    parser.add_argument(
+        "--higgs-url", type=str, default="http://127.0.0.1:8006",
+        help="Basis-URL des Higgs-Servers (Standard: http://127.0.0.1:8006).",
+    )
 
     args = parser.parse_args()
 
-    global CUSTOM_VOICE_CACHE_DIR
+    global CUSTOM_VOICE_CACHE_DIR, APP_LANG, CFG_DEFAULT, STEPS_DEFAULT
+    global HIGGS_ENABLED, HIGGS_URL
     CUSTOM_VOICE_CACHE_DIR = args.cache_dir
     metrics.LIVE_RTF_METRICS = str(args.live_rtf)
     os.makedirs(CUSTOM_VOICE_CACHE_DIR, exist_ok=True)
+
+    APP_LANG = args.lang
+    CFG_DEFAULT = args.cfg_default
+    STEPS_DEFAULT = args.steps_default
+    HIGGS_ENABLED = not args.no_higgs
+    HIGGS_URL = args.higgs_url
 
     load_model(
         **{
