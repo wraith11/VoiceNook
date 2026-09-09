@@ -482,7 +482,7 @@ $("genBtn").onclick=async()=>{
   }catch(e){if(e.name!=="AbortError")rstatus("voxResultMsg",tr("error",{msg:e.message}),false);else rstatus("voxResultMsg",tr("aborted"));}
   finally{btn.disabled=false;stopDots();}
 };
-$("stopBtn").onclick=()=>{if(abortCtrl)abortCtrl.abort();};
+$("stopBtn").onclick=()=>{stopPlayback(); if(abortCtrl)abortCtrl.abort();};
 $("voxDl").onclick=async()=>{
   if(!vox.wav)return; const fmt=$("voxFmt").value;
   try{ if(fmt==="wav")triggerDownload(vox.wav,"voice.wav"); else await convertDownload(vox.wav,"voice",fmt); rstatus("voxResultMsg",tr("dl_start")); }
