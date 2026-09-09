@@ -495,7 +495,7 @@ $("saveGenBtn").onclick=async()=>{
   fd.append("voice_name",name.trim()); fd.append("prompt_text",vox.cachedText); fd.append("file",vox.wav,name+".wav");
   try{const r=await fetch("/v1/voices/upload",{method:"POST",body:fd});const j=await r.json();
     if(!r.ok)throw new Error(j.detail||r.statusText);
-    rstatus("libMsg",tr("saved",{name,mode:j.mode})); loadVox(); loadHg(); loadLib();
+    rstatus("libMsg",tr("saved",{name,mode:j.mode})); loadVox(); await loadHg(); loadLib();
   }catch(e){rstatus("libMsg",tr("error",{msg:e.message}),false);}
 };
 
@@ -652,7 +652,7 @@ async function delVoice(name){
   if(!confirm(CFG.lang==="en"?("Delete voice '"+name+"'?"):("Stimme '"+name+"' löschen?")))return;
   try{const r=await fetch("/v1/voices/"+encodeURIComponent(name),{method:"DELETE"});
     if(!r.ok)throw new Error((await r.json()).detail||r.statusText);
-    rstatus("libMsg",tr("deleted",{name})); loadVox(); loadHg(); loadLib();
+    rstatus("libMsg",tr("deleted",{name})); loadVox(); await loadHg(); loadLib();
   }catch(e){rstatus("libMsg",tr("error",{msg:e.message}),false);}
 }
 $("libCreateBtn").onclick=async()=>{
@@ -662,7 +662,7 @@ $("libCreateBtn").onclick=async()=>{
   fd.append("voice_name",name); fd.append("prompt_text",$("libReftext").value.trim()); fd.append("file",file);
   try{const r=await fetch("/v1/voices/upload",{method:"POST",body:fd});const j=await r.json();
     if(!r.ok)throw new Error(j.detail||r.statusText);
-    rstatus("libMsg",tr("created",{name,mode:j.mode})); loadVox(); loadHg(); loadLib();
+    rstatus("libMsg",tr("created",{name,mode:j.mode})); loadVox(); await loadHg(); loadLib();
   }catch(e){rstatus("libMsg",tr("error",{msg:e.message}),false);}
 };
 
@@ -677,7 +677,7 @@ async function init(){
   // Higgs-Tab ausblenden, wenn deaktiviert
   if(!CFG.higgs_enabled){ $("tabHiggs").style.display="none"; $("paneHiggs").classList.remove("active"); setHgStatus("disabled"); }
   setHgStatus(CFG.higgs_enabled?"idle":"disabled");
-  loadVox(); loadHg(); loadLib();
+  loadVox(); await loadHg(); loadLib();
   pollModels();
   // periodisch aktualisieren (Idle-Unload sichtbar machen)
   setInterval(pollModels, 10000);
