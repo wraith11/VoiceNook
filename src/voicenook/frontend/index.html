@@ -34,6 +34,10 @@
   .refbtn{background:none;border:none;color:var(--acc);cursor:pointer;font-size:.75rem;padding:0;text-decoration:underline;text-underline-offset:2px}
   .refrow .reftxt{display:none;margin-top:.35rem;padding:.45rem .6rem;background:var(--panel2);border:1px solid var(--line);border-radius:6px;font-size:.78rem;color:var(--txt);white-space:normal}
   .refrow .reftxt.open{display:block}
+  .voicedetails{display:inline-block}
+  .voicedetails summary{cursor:pointer;color:var(--mut);font-size:.75rem;list-style:none;padding:.25rem .4rem;border:1px solid var(--line);border-radius:6px}
+  .voicedetails summary::-webkit-details-marker{display:none}
+  .voicedetails[open] summary{border-color:var(--acc);color:var(--acc)}
   #status{margin:.6rem 0;font-size:.88rem;min-height:1.2em}
   .voice{display:flex;justify-content:space-between;align-items:center;gap:.6rem;padding:.5rem .4rem;border-bottom:1px solid var(--line);flex-wrap:wrap}
   .voice:last-child{border-bottom:none}
@@ -206,8 +210,8 @@
       <label data-i18n="testsentence">Testsatz für die Vorschau</label>
       <input type="text" id="testSentence" style="width:100%" value="Hallo, das ist ein Test meiner Stimme.">
       <div id="libList" style="margin-top:.4rem"><p class="hint">Lade…</p></div>
-      <div id="libMsg" style="font-size:.85rem;min-height:1.2em;margin-top:.4rem"></div>
     </div>
+    <div id="libMsg" style="font-size:.85rem;min-height:1.2em;margin:.2rem 0 .8rem"></div>
   </div>
 </div>
 
@@ -310,10 +314,17 @@ $("tabHiggs").onclick=()=>setTab("paneHiggs");
 $("tabLib").onclick=()=>setTab("paneLib");
 
 /* ---------- Audio ---------- */
+let activeSources=[];
 function getCtx(sr){
   if(!ctx||ctx.sampleRate!==sr){ctx=new(window.AudioContext||window.webkitAudioContext)({sampleRate:sr});nextT=0;}
   if(ctx.state==="suspended")ctx.resume();
   return ctx;
+}
+function stopPlayback(){
+  activeSources.forEach(s=>{try{s.stop();}catch(e){}});
+  activeSources=[];
+  nextT=0;
+  if(ctx){ try{ctx.close();}catch(e){} ctx=null; }
 }
 function playPCM16(ab,sr){
   const n=Math.floor(ab.byteLength/2); if(n<=0)return;
@@ -323,6 +334,7 @@ function playPCM16(ab,sr){
   if(nextT<now+0.12)nextT=now+0.12;
   const b=c.createBuffer(1,f32.length,c.sampleRate); b.copyToChannel(f32,0);
   const s=c.createBufferSource(); s.buffer=b; s.connect(c.destination); s.start(nextT);
+  activeSources.push(s);
   nextT+=f32.length/c.sampleRate;
 }
 function buildWav(parts,sr){
@@ -474,7 +486,7 @@ $("genBtn").onclick=async()=>{
   }catch(e){if(e.name!=="AbortError")rstatus("voxResultMsg",tr("error",{msg:e.message}),false);else rstatus("voxResultMsg",tr("aborted"));}
   finally{btn.disabled=false;stopDots();}
 };
-$("stopBtn").onclick=()=>{if(abortCtrl)abortCtrl.abort();};
+$("stopBtn").onclick=()=>{stopPlayback(); if(abortCtrl)abortCtrl.abort();};
 $("voxDl").onclick=async()=>{
   if(!vox.wav)return; const fmt=$("voxFmt").value;
   try{ if(fmt==="wav")triggerDownload(vox.wav,"voice.wav"); else await convertDownload(vox.wav,"voice",fmt); rstatus("voxResultMsg",tr("dl_start")); }
@@ -487,7 +499,7 @@ $("saveGenBtn").onclick=async()=>{
   fd.append("voice_name",name.trim()); fd.append("prompt_text",vox.cachedText); fd.append("file",vox.wav,name+".wav");
   try{const r=await fetch("/v1/voices/upload",{method:"POST",body:fd});const j=await r.json();
     if(!r.ok)throw new Error(j.detail||r.statusText);
-    rstatus("libMsg",tr("saved",{name,mode:j.mode})); loadVox(); loadHg(); loadLib();
+    rstatus("libMsg",tr("saved",{name,mode:j.mode})); loadVox(); await loadHg(); loadLib();
   }catch(e){rstatus("libMsg",tr("error",{msg:e.message}),false);}
 };
 
@@ -572,7 +584,7 @@ $("hgGenBtn").onclick=async()=>{
   }catch(e){if(e.name!=="AbortError")rstatus("hgResultMsg",tr("error",{msg:e.message}),false);else rstatus("hgResultMsg",tr("aborted"));}
   finally{btn.disabled=false;stopDots();}
 };
-$("hgStopBtn").onclick=()=>{if(abortCtrl)abortCtrl.abort();};
+$("hgStopBtn").onclick=()=>{stopPlayback(); if(abortCtrl)abortCtrl.abort();};
 $("hgDl").onclick=async()=>{
   if(!hg.wav)return; const fmt=$("hgFmt").value;
   try{ if(fmt==="wav")triggerDownload(hg.wav,"voice.wav"); else await convertDownload(hg.wav,"voice",fmt); rstatus("hgResultMsg",tr("dl_start")); }
@@ -597,6 +609,18 @@ async function testVoice(name){
 }
 async function loadLib(){
   try{
+async function playVoiceWav(name){
+  try{
+    const r=await fetch("/v1/voices/"+encodeURIComponent(name)+"/wav");
+    if(!r.ok){ let m=r.statusText; try{m=(await r.json()).detail||m;}catch(e){} throw new Error(m); }
+    const ab=await r.arrayBuffer();
+    // WAV-Header (44 Bytes) abspalten -> rohe PCM16
+    const pcm = ab.byteLength>44 ? ab.slice(44) : ab;
+    playPCM16(pcm, 16000);
+    rstatus("libMsg",tr("test_play"));
+  }catch(e){rstatus("libMsg",tr("error",{msg:e.message}),false);}
+}
+async function loadLib(){
     // Sicherstellen, dass voicesHg (Higgs-Verfuegbarkeit) geladen ist
     if(!voicesHg.length){ try{ await loadHg(); }catch(e){} }
     const j=await(await fetch("/voices")).json();
@@ -614,14 +638,21 @@ async function loadLib(){
       const higgsBadge = hasHiggs?"":'<span class="hibadge" title="'+(CFG.lang==="en"?"Not available in Higgs":"Nicht für Higgs verfügbar")+'"><span class="xcircle">✕</span> Higgs</span>';
       const curDesc = esc(desc[n]||"");
       const ref = det[n]?esc(det[n]):"";
-      const refRow = ref?'<div class="refrow"><button class="refbtn" onclick="this.nextElementSibling.classList.toggle(\'open\')">'+(CFG.lang==="en"?"Reftext":"Reftext")+' ▾</button>'+
-        '<div class="reftxt">'+ref+'</div></div>':"";
-      d.innerHTML='<div style="display:flex;align-items:center;gap:.4rem"><strong>'+n+'</strong><span class="tag">Custom</span>'+higgsBadge+'</div>'+
-        refRow+
-        '<div class="row" style="width:100%"><input type="text" class="libdesc" value="'+curDesc+'" placeholder="'+tr("desc_hint")+'">'+
-        '<button class="btn sec" onclick="saveDesc(\''+n+'\',this.previousElementSibling.value)">'+(CFG.lang==="en"?"Save":"Speichern")+'</button>'+
+      // Debug-Bereich (Details): Reftext + Original-WAV
+      const debugRows = (ref?'<div class="refrow"><button class="refbtn" onclick="this.nextElementSibling.classList.toggle(\'open\')">'+(CFG.lang==="en"?"Reftext":"Reftext")+' ▾</button>'+
+        '<div class="reftxt">'+ref+'</div></div>':"")+
+        '<div class="row" style="margin-top:.3rem">'+
+          '<button class="btn sec" onclick="playVoiceWav(\''+n+'\')">'+(CFG.lang==="en"?"Original WAV":"Original-WAV")+' ▶</button>'+
+          '<a class="btn sec" href="/v1/voices/'+encodeURIComponent(n)+'/wav" download="'+n+'.wav">'+(CFG.lang==="en"?"Download WAV":"WAV laden")+'</a>'+
+        '</div>';
+      const details='<details class="voicedetails"><summary>'+(CFG.lang==="en"?"Details":"Details")+' ▾</summary><div style="margin-top:.3rem">'+debugRows+'</div></details>';
+      d.innerHTML='<div style="display:flex;align-items:center;gap:.4rem;flex-wrap:wrap"><strong>'+n+'</strong><span class="tag">Custom</span>'+higgsBadge+
+        '<span style="flex:1"></span>'+
         '<button class="btn sec" onclick="testVoice(\''+n+'\')">'+(CFG.lang==="en"?"Test":"Testen")+'</button>'+
-        '<button class="btn danger" onclick="delVoice(\''+n+'\')">'+(CFG.lang==="en"?"Delete":"Löschen")+'</button></div>';
+        '<button class="btn danger" onclick="delVoice(\''+n+'\')">'+(CFG.lang==="en"?"Delete":"Löschen")+'</button>'+
+        details+'</div>'+
+        '<div class="row" style="width:100%;margin-top:.3rem"><input type="text" class="libdesc" value="'+curDesc+'" placeholder="'+tr("desc_hint")+'">'+
+        '<button class="btn sec" onclick="saveDesc(\''+n+'\',this.previousElementSibling.value)">'+(CFG.lang==="en"?"Save":"Speichern")+'</button></div>';
       el.appendChild(d);
     });
     sys.forEach(n=>{
@@ -644,7 +675,7 @@ async function delVoice(name){
   if(!confirm(CFG.lang==="en"?("Delete voice '"+name+"'?"):("Stimme '"+name+"' löschen?")))return;
   try{const r=await fetch("/v1/voices/"+encodeURIComponent(name),{method:"DELETE"});
     if(!r.ok)throw new Error((await r.json()).detail||r.statusText);
-    rstatus("libMsg",tr("deleted",{name})); loadVox(); loadHg(); loadLib();
+    rstatus("libMsg",tr("deleted",{name})); loadVox(); await loadHg(); loadLib();
   }catch(e){rstatus("libMsg",tr("error",{msg:e.message}),false);}
 }
 $("libCreateBtn").onclick=async()=>{
@@ -654,7 +685,7 @@ $("libCreateBtn").onclick=async()=>{
   fd.append("voice_name",name); fd.append("prompt_text",$("libReftext").value.trim()); fd.append("file",file);
   try{const r=await fetch("/v1/voices/upload",{method:"POST",body:fd});const j=await r.json();
     if(!r.ok)throw new Error(j.detail||r.statusText);
-    rstatus("libMsg",tr("created",{name,mode:j.mode})); loadVox(); loadHg(); loadLib();
+    rstatus("libMsg",tr("created",{name,mode:j.mode})); loadVox(); await loadHg(); loadLib();
   }catch(e){rstatus("libMsg",tr("error",{msg:e.message}),false);}
 };
 
@@ -669,7 +700,7 @@ async function init(){
   // Higgs-Tab ausblenden, wenn deaktiviert
   if(!CFG.higgs_enabled){ $("tabHiggs").style.display="none"; $("paneHiggs").classList.remove("active"); setHgStatus("disabled"); }
   setHgStatus(CFG.higgs_enabled?"idle":"disabled");
-  loadVox(); loadHg(); loadLib();
+  loadVox(); await loadHg(); loadLib();
   pollModels();
   // periodisch aktualisieren (Idle-Unload sichtbar machen)
   setInterval(pollModels, 10000);
