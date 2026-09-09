@@ -1176,6 +1176,7 @@ async def create_speech(request: SpeechRequest):
 
 @app.post("/v1/audio/speech/stream")
 async def stream_speech(request: SpeechRequest):
+    _touch_vox_activity()
     job = submit_generation_job(request)
 
     async def audio_stream():
