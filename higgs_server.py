@@ -40,6 +40,22 @@ app.add_middleware(
 _model = None
 _sessions = {}
 _args = None
+_LAST_ACTIVITY = time.time()
+
+
+def _touch_activity():
+    """Wird bei jedem Request aufgerufen, um den Idle-Timer zurückzusetzen."""
+    global _LAST_ACTIVITY
+    _LAST_ACTIVITY = time.time()
+
+
+def _idle_watchdog():
+    """Beendet den Server, wenn länger als IDLE_TIMEOUT keine Anfrage kam."""
+    while True:
+        time.sleep(10)
+        if _model is not None and (time.time() - _LAST_ACTIVITY) > IDLE_TIMEOUT_SECONDS:
+            print(f"[*] Higgs inaktiv fuer >{IDLE_TIMEOUT_SECONDS}s - Auto-Stop.", flush=True)
+            os._exit(0)
 
 
 def list_voices():
