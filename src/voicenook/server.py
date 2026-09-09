@@ -1309,6 +1309,7 @@ async def get_available_voices():
     system_voices = VOICE_STORE.names_from_dir(VOICE_CACHE_DIR)
     custom_voices = VOICE_STORE.names_from_dir(CUSTOM_VOICE_CACHE_DIR)
     custom_details = {}
+    custom_descriptions = {}
     for v in custom_voices:
         txt_path = os.path.join(CUSTOM_VOICE_CACHE_DIR, f"{v}.txt")
         if os.path.exists(txt_path):
@@ -1316,16 +1317,38 @@ async def get_available_voices():
                 custom_details[v] = f.read().strip()
         else:
             custom_details[v] = ""
+        desc_path = os.path.join(CUSTOM_VOICE_CACHE_DIR, f"{v}.desc.txt")
+        if os.path.exists(desc_path):
+            with open(desc_path, "r", encoding="utf-8") as f:
+                custom_descriptions[v] = f.read().strip()
+        else:
+            custom_descriptions[v] = ""
     return {
         "voices": voices,
         "count": len(voices),
         "system_voices": system_voices,
         "custom_voices": custom_voices,
         "custom_voice_details": custom_details,
+        "custom_voice_descriptions": custom_descriptions,
         "included_voice_cache_directory": VOICE_CACHE_DIR,
         "included_voice_cache_directories": VOICE_CACHE_DIRS,
         "custom_cache_directory": CUSTOM_VOICE_CACHE_DIR,
     }
+
+
+@app.post("/v1/voices/{voice_name}/description")
+async def set_voice_description(voice_name: str, body: dict):
+    name = VOICE_STORE.validate(voice_name)
+    if not VOICE_STORE.is_custom(name):
+        raise HTTPException(status_code=404, detail=f"Custom voice '{name}' not found")
+    desc = (body.get("description") or "").strip()
+    desc_path = os.path.join(CUSTOM_VOICE_CACHE_DIR, f"{name}.desc.txt")
+    if desc:
+        with open(desc_path, "w", encoding="utf-8") as f:
+            f.write(desc)
+    elif os.path.exists(desc_path):
+        os.unlink(desc_path)
+    return {"status": "success", "description": desc}
 
 
 @app.delete("/v1/voices/{voice_name}")
