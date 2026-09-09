@@ -29,11 +29,11 @@
   .hibadge{display:inline-flex;align-items:center;gap:.3rem;color:var(--err);font-size:.72rem;cursor:default}
   .hibadge .xcircle{display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;border-radius:50%;border:1.5px solid var(--err);color:var(--err);font-size:.65rem;line-height:1}
   .libdesc{flex:1;min-width:140px}
-  /* Reftext-Button ohne Rahmen; Klick vergroessert die Zeile (Block innerhalb der Card) */
-  .refdrop{display:inline-block;vertical-align:middle}
-  .refdrop .refbtn{background:none;border:none;color:var(--acc);cursor:pointer;font-size:.75rem;padding:0;text-decoration:underline;text-underline-offset:2px}
-  .refdrop .reftxt{display:none;margin-top:.35rem;padding:.45rem .6rem;background:var(--panel2);border:1px solid var(--line);border-radius:6px;font-size:.78rem;color:var(--txt);white-space:normal}
-  .refdrop.open .reftxt{display:block}
+  /* Reftext-Button ohne Rahmen; Klick blendet Reftext in eigener Zeile ein */
+  .refrow{margin:.3rem 0}
+  .refbtn{background:none;border:none;color:var(--acc);cursor:pointer;font-size:.75rem;padding:0;text-decoration:underline;text-underline-offset:2px}
+  .refrow .reftxt{display:none;margin-top:.35rem;padding:.45rem .6rem;background:var(--panel2);border:1px solid var(--line);border-radius:6px;font-size:.78rem;color:var(--txt);white-space:normal}
+  .refrow .reftxt.open{display:block}
   #status{margin:.6rem 0;font-size:.88rem;min-height:1.2em}
   .voice{display:flex;justify-content:space-between;align-items:center;gap:.6rem;padding:.5rem .4rem;border-bottom:1px solid var(--line);flex-wrap:wrap}
   .voice:last-child{border-bottom:none}
@@ -399,7 +399,7 @@ $("voxStatus").onclick=async()=>{
     if(voxLoaded){ await fetch("/api/models/vox/unload",{method:"POST"}); }
     else { await fetch("/api/models/vox/load",{method:"POST"}); }
     pollModels();
-  }catch(e){status(tr("error",{msg:e.message}),false);}
+  }catch(e){rstatus("voxResultMsg",tr("error",{msg:e.message}),false);}
 };
 $("hgStatus").onclick=async()=>{
   if(!CFG.higgs_enabled)return;
@@ -407,7 +407,7 @@ $("hgStatus").onclick=async()=>{
     if(hgLoaded){ await fetch("/api/models/higgs/unload",{method:"POST"}); }
     else { setHgStatus("loading"); await fetch("/api/models/higgs/load",{method:"POST"}); }
     pollModels();
-  }catch(e){status(tr("error",{msg:e.message}),false);pollModels();}
+  }catch(e){rstatus("hgResultMsg",tr("error",{msg:e.message}),false);pollModels();}
 };
 
 /* ---------- VOXCPM2 ---------- */
@@ -419,7 +419,7 @@ async function loadVox(){
     const sel=$("voiceSel"),cur=sel.value; sel.innerHTML="";
     [...voicesVox.custom,...voicesVox.system].forEach(n=>{const o=document.createElement("option");o.value=n;o.textContent=n;sel.appendChild(o);});
     if(cur&&[...voicesVox.custom,...voicesVox.system].includes(cur))sel.value=cur;
-  }catch(e){status(tr("error",{msg:e.message}),false);}
+  }catch(e){rstatus("libMsg",tr("error",{msg:e.message}),false);}
 }
 function voxModeChanged(){
   const m=$("voxMode").value;
@@ -440,9 +440,9 @@ function voxPayload(){
   return p;
 }
 $("genBtn").onclick=async()=>{
-  if(!$("text").value.trim()){status(tr("enter_text"),false);return;}
+  if(!$("text").value.trim()){rstatus("voxResultMsg",tr("enter_text"),false);return;}
   const m=$("voxMode").value;
-  if(m!=="design"&&!$("voiceSel").value){status(tr("choose_voice"),false);return;}
+  if(m!=="design"&&!$("voiceSel").value){rstatus("voxResultMsg",tr("choose_voice"),false);return;}
   const btn=$("genBtn"); btn.disabled=true;
   vox={parts:[],rate:48000,wav:null,cachedText:$("text").value};
   $("voxPlayer").src=""; $("voxDl").disabled=true; $("saveGenBtn").disabled=true;
@@ -481,7 +481,7 @@ $("voxDl").onclick=async()=>{
   catch(e){rstatus("voxResultMsg",tr("download_err",{msg:e.message}),false);}
 };
 $("saveGenBtn").onclick=async()=>{
-  if(!vox.wav){status(tr("error",{msg:"no wav"}),false);return;}
+  if(!vox.wav){rstatus("voxResultMsg",tr("error",{msg:"no wav"}),false);return;}
   const name=prompt(CFG.lang==="en"?"Voice name:":"Name der Stimme:"); if(!name||!name.trim())return;
   const fd=new FormData();
   fd.append("voice_name",name.trim()); fd.append("prompt_text",vox.cachedText); fd.append("file",vox.wav,name+".wav");
@@ -581,16 +581,19 @@ $("hgDl").onclick=async()=>{
 
 /* ---------- STIMMEN-BIBLIOTHEK ---------- */
 async function testVoice(name){
-  const p={model:"voxcpm2",input:$("testSentence").value||"Hallo.",voice:name,voice_mode:"reference",response_format:"wav"};
-  status(tr("testing",{name}));
+  // High-similarity fuer moeglichst akkurate Wiedergabe (falls Reftext vorhanden)
+  const hasRef = voicesVox.details && !!voicesVox.details[name];
+  const mode = hasRef ? "high_similarity" : "reference";
+  const p={model:"voxcpm2",input:$("testSentence").value||"Hallo.",voice:name,voice_mode:mode,response_format:"wav"};
+  rstatus("libMsg",tr("testing",{name}));
   try{
     const r=await fetch("/v1/audio/speech/stream",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(p)});
     if(!r.ok){let m=r.statusText;try{m=(await r.json()).detail||m;}catch(e){}throw new Error(m);}
     const sr=Number(r.headers.get("X-Sample-Rate"))||48000;
     const rd=r.body.getReader();
     while(true){const{done,value}=await rd.read();if(done)break; if(value&&value.byteLength)playPCM16(value,sr);}
-    status(tr("test_play"));
-  }catch(e){status(tr("error",{msg:e.message}),false);}
+    rstatus("libMsg",tr("test_play"));
+  }catch(e){rstatus("libMsg",tr("error",{msg:e.message}),false);}
 }
 async function loadLib(){
   try{
@@ -605,14 +608,16 @@ async function loadLib(){
     // Custom-Stimmen zuerst, dann Systemstimmen
     cus.forEach(n=>{
       const d=document.createElement("div"); d.className="voice";
+      d.style.display="block"; d.style.padding=".5rem .4rem";
       // Higgs-Verfuegbarkeit: hat die Stimme eine .wav? (in voicesHg aus /higgs/api/voices)
       const hasHiggs = (voicesHg||[]).indexOf(n)!==-1;
       const higgsBadge = hasHiggs?"":'<span class="hibadge" title="'+(CFG.lang==="en"?"Not available in Higgs":"Nicht für Higgs verfügbar")+'"><span class="xcircle">✕</span> Higgs</span>';
       const curDesc = esc(desc[n]||"");
       const ref = det[n]?esc(det[n]):"";
-      const refDrop = ref?'<span class="refdrop"><button class="refbtn" onclick="this.parentNode.classList.toggle(\'open\')">'+(CFG.lang==="en"?"Reftext":"Reftext")+' ▾</button>'+
-        '<div class="reftxt">'+ref+'</div></span>':"";
-      d.innerHTML='<div style="display:flex;align-items:center;gap:.4rem"><strong>'+n+'</strong><span class="tag">Custom</span>'+higgsBadge+refDrop+'</div>'+
+      const refRow = ref?'<div class="refrow"><button class="refbtn" onclick="this.nextElementSibling.classList.toggle(\'open\')">'+(CFG.lang==="en"?"Reftext":"Reftext")+' ▾</button>'+
+        '<div class="reftxt">'+ref+'</div></div>':"";
+      d.innerHTML='<div style="display:flex;align-items:center;gap:.4rem"><strong>'+n+'</strong><span class="tag">Custom</span>'+higgsBadge+'</div>'+
+        refRow+
         '<div class="row" style="width:100%"><input type="text" class="libdesc" value="'+curDesc+'" placeholder="'+tr("desc_hint")+'">'+
         '<button class="btn sec" onclick="saveDesc(\''+n+'\',this.previousElementSibling.value)">'+(CFG.lang==="en"?"Save":"Speichern")+'</button>'+
         '<button class="btn sec" onclick="testVoice(\''+n+'\')">'+(CFG.lang==="en"?"Test":"Testen")+'</button>'+
@@ -625,7 +630,7 @@ async function loadLib(){
         '<button class="btn sec" onclick="testVoice(\''+n+'\')">'+(CFG.lang==="en"?"Test":"Testen")+'</button>';
       el.appendChild(d);
     });
-  }catch(e){status(tr("error",{msg:e.message}),false);}
+  }catch(e){rstatus("libMsg",tr("error",{msg:e.message}),false);}
 }
 async function saveDesc(name,desc){
   try{
@@ -644,7 +649,7 @@ async function delVoice(name){
 }
 $("libCreateBtn").onclick=async()=>{
   const name=$("libName").value.trim(), file=$("libFile").files[0];
-  if(!name||!file){status(tr("name_req"),false);return;}
+  if(!name||!file){rstatus("libMsg",tr("name_req"),false);return;}
   const fd=new FormData();
   fd.append("voice_name",name); fd.append("prompt_text",$("libReftext").value.trim()); fd.append("file",file);
   try{const r=await fetch("/v1/voices/upload",{method:"POST",body:fd});const j=await r.json();
