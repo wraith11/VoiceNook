@@ -593,23 +593,28 @@ async function loadLib(){
     const el=$("libList");
     if(!sys.length&&!cus.length){el.innerHTML='<p class="hint">'+(CFG.lang==="en"?"No voices yet.":"Keine Stimmen vorhanden.")+'</p>';return;}
     el.innerHTML="";
-    sys.forEach(n=>{
-      const d=document.createElement("div"); d.className="voice";
-      d.innerHTML='<div><strong>'+n+'</strong> <span class="tag">System</span></div>'+
-        '<button class="btn sec" onclick="testVoice(\''+n+'\')">'+(CFG.lang==="en"?"Test":"Testen")+'</button>';
-      el.appendChild(d);
-    });
+    // Custom-Stimmen zuerst, dann Systemstimmen
     cus.forEach(n=>{
       const d=document.createElement("div"); d.className="voice";
       // Higgs-Verfuegbarkeit: hat die Stimme eine .wav? (in voicesHg aus /higgs/api/voices)
       const hasHiggs = (voicesHg||[]).indexOf(n)!==-1;
       const higgsBadge = hasHiggs?"":'<span class="hibadge" title="'+(CFG.lang==="en"?"Not available in Higgs":"Nicht für Higgs verfügbar")+'">✕ Higgs</span>';
-      const curDesc = desc[n]||"";
-      d.innerHTML='<div style="display:flex;align-items:center;gap:.4rem"><strong>'+n+'</strong><span class="tag">Custom</span>'+higgsBadge+'</div>'+
-        '<div class="row" style="width:100%"><input type="text" class="libdesc" value="'+esc(curDesc)+'" placeholder="'+tr("desc_hint")+'">'+
+      const curDesc = esc(desc[n]||"");
+      const ref = det[n]?esc(det[n]):"";
+      const refDrop = ref?'<span class="refdrop">'+
+        '<details><summary>'+(CFG.lang==="en"?"Ref":"Reftext")+'</summary>'+
+        '<div class="reftxt">'+ref+'</div></details></span>':"";
+      d.innerHTML='<div style="display:flex;align-items:center;gap:.4rem"><strong>'+n+'</strong><span class="tag">Custom</span>'+higgsBadge+refDrop+'</div>'+
+        '<div class="row" style="width:100%"><input type="text" class="libdesc" value="'+curDesc+'" placeholder="'+tr("desc_hint")+'">'+
         '<button class="btn sec" onclick="saveDesc(\''+n+'\',this.previousElementSibling.value)">'+(CFG.lang==="en"?"Save":"Speichern")+'</button>'+
         '<button class="btn sec" onclick="testVoice(\''+n+'\')">'+(CFG.lang==="en"?"Test":"Testen")+'</button>'+
         '<button class="btn danger" onclick="delVoice(\''+n+'\')">'+(CFG.lang==="en"?"Delete":"Löschen")+'</button></div>';
+      el.appendChild(d);
+    });
+    sys.forEach(n=>{
+      const d=document.createElement("div"); d.className="voice";
+      d.innerHTML='<div><strong>'+n+'</strong> <span class="tag">System</span></div>'+
+        '<button class="btn sec" onclick="testVoice(\''+n+'\')">'+(CFG.lang==="en"?"Test":"Testen")+'</button>';
       el.appendChild(d);
     });
   }catch(e){status(tr("error",{msg:e.message}),false);}
