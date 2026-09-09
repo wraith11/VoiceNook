@@ -1279,6 +1279,9 @@ async def cancel_generation():
 
 @app.post("/v1/voices")
 async def create_voice(request: CreateVoiceRequest):
+    _touch_vox_activity()
+    if not vox_load():
+        raise HTTPException(status_code=503, detail="VoxCPM2 konnte nicht geladen werden")
     name = VOICE_STORE.validate(request.voice_name)
     if VOICE_STORE.is_default(name):
         raise HTTPException(status_code=403, detail=f"'{name}' is a system voice")
