@@ -74,7 +74,10 @@
   <!-- ============ VOXCPM2 ============ -->
   <div class="pane active" id="paneVox">
     <div class="card">
-      <label data-i18n="mode">Modus</label>
+      <div class="row" style="justify-content:space-between">
+        <label data-i18n="mode" style="margin:0">Modus</label>
+        <span class="hstatus" id="voxStatus"><span class="dot" id="voxDot"></span><span id="voxStatusTxt">VoxCPM2</span></span>
+      </div>
       <select id="voxMode">
         <option value="design" data-i18n="mode_design">Voice Design (nur Beschreibung)</option>
         <option value="ref" data-i18n="mode_ref">Clone (Reference + Beschreibung)</option>
