@@ -22,7 +22,6 @@ Beide Modelle laufen **in-process** unter einem einzigen Port und laden **on-dem
 - **Generate & play / Generate only** — Button mit Dropdown, pro Sitzung umschaltbar (komplett generieren + manuell Play für langsamere Systeme).
 - **Seed-Steuerung** und konfigurierbare Defaults (`cfg_value`, `inference_timesteps`).
 - **Modell-Lifecycle** — beide Modelle laden on-demand, entladen sich nach Inaktivität, mit Status + Load/Unload-Buttons in der UI.
-- **Ein-Port-Architektur** — Higgs wird als FastAPI-App unter `/higgs` in den Hauptserver gemountet (kein zweiter Port).
 
 ---
 
