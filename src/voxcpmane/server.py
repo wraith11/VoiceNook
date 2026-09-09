@@ -1438,6 +1438,74 @@ async def convert_audio(file: UploadFile = File(...), to_format: str = Form("mp3
     }
 
 
+# ============================================================
+#  VoiceNook: Konfiguration & Higgs-Lifecycle
+# ============================================================
+APP_LANG = "de"
+CFG_DEFAULT = 2.0
+STEPS_DEFAULT = 20
+HIGGS_ENABLED = True
+HIGGS_URL = "http://127.0.0.1:8006"
+HIGGS_PROC = None
+HIGGS_LOCK = threading.Lock()
+
+
+def _higgs_script_path() -> str:
+    # higgs_server.py liegt im Repo-Root: src/voxcpmane/server.py -> ../../../
+    candidates = [
+        os.path.join(pathlib.Path(__file__).resolve().parent.parent.parent, "higgs_server.py"),
+        os.path.join(os.getcwd(), "higgs_server.py"),
+    ]
+    for c in candidates:
+        if os.path.exists(c):
+            return c
+    return candidates[0]
+
+
+def _higgs_running() -> bool:
+    return HIGGS_PROC is not None and HIGGS_PROC.poll() is None
+
+
+@app.get("/api/config")
+async def api_config():
+    return {
+        "lang": APP_LANG,
+        "cfg_default": CFG_DEFAULT,
+        "steps_default": STEPS_DEFAULT,
+        "higgs_enabled": HIGGS_ENABLED,
+        "higgs_url": HIGGS_URL,
+    }
+
+
+@app.get("/api/higgs/status")
+async def higgs_status():
+    return {"running": _higgs_running(), "enabled": HIGGS_ENABLED}
+
+
+@app.post("/api/higgs/start")
+async def higgs_start():
+    global HIGGS_PROC
+    if not HIGGS_ENABLED:
+        raise HTTPException(status_code=400, detail="Higgs ist deaktiviert")
+    with HIGGS_LOCK:
+        if _higgs_running():
+            return {"running": True}
+        script = _higgs_script_path()
+        HIGGS_PROC = subprocess.Popen(
+            [sys.executable, "-u", script, "--port", "8006"],
+            cwd=os.path.dirname(script) or os.getcwd(),
+        )
+    return {"running": True}
+
+
+@app.post("/api/higgs/stop")
+async def higgs_stop():
+    global HIGGS_PROC
+    with HIGGS_LOCK:
+        if HIGGS_PROC is not None and HIGGS_PROC.poll() is None:
+            HIGGS_PROC.terminate()
+            HIGGS_PROC = None
+    return {"running": False}
 def main():
     parser = argparse.ArgumentParser(description="VoxCPM2 TTS Server")
     parser.add_argument("--port", "-p", type=int, default=8000)
