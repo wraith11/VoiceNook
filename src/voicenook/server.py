@@ -1548,9 +1548,10 @@ async def api_higgs_load():
     from . import higgs_server as hs
     if not HIGGS_ENABLED:
         raise HTTPException(status_code=400, detail="Higgs ist deaktiviert")
-    with MODEL_LOCK:
-        if SINGLE_MODEL:
-            vox_unload()
+    # Kein MODEL_LOCK hier: vox_unload() lockt selbst (nicht-reentrant). 
+    # Erst Vox entladen, dann Higgs laden (single-model).
+    if SINGLE_MODEL:
+        vox_unload()
     await asyncio.to_thread(hs.load_model)
     return {"higgs_loaded": hs.is_loaded()}
 
