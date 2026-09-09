@@ -486,8 +486,8 @@ $("saveGenBtn").onclick=async()=>{
   fd.append("voice_name",name.trim()); fd.append("prompt_text",vox.cachedText); fd.append("file",vox.wav,name+".wav");
   try{const r=await fetch("/v1/voices/upload",{method:"POST",body:fd});const j=await r.json();
     if(!r.ok)throw new Error(j.detail||r.statusText);
-    status(tr("saved",{name,mode:j.mode})); loadVox(); loadHg(); loadLib();
-  }catch(e){status(tr("error",{msg:e.message}),false);}
+    rstatus("libMsg",tr("saved",{name,mode:j.mode})); loadVox(); loadHg(); loadLib();
+  }catch(e){rstatus("libMsg",tr("error",{msg:e.message}),false);}
 };
 
 /* ---------- HIGGS ---------- */
