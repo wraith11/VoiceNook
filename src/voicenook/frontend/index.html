@@ -622,14 +622,21 @@ async function loadLib(){
       const higgsBadge = hasHiggs?"":'<span class="hibadge" title="'+(CFG.lang==="en"?"Not available in Higgs":"Nicht für Higgs verfügbar")+'"><span class="xcircle">✕</span> Higgs</span>';
       const curDesc = esc(desc[n]||"");
       const ref = det[n]?esc(det[n]):"";
-      const refRow = ref?'<div class="refrow"><button class="refbtn" onclick="this.nextElementSibling.classList.toggle(\'open\')">'+(CFG.lang==="en"?"Reftext":"Reftext")+' ▾</button>'+
-        '<div class="reftxt">'+ref+'</div></div>':"";
-      d.innerHTML='<div style="display:flex;align-items:center;gap:.4rem"><strong>'+n+'</strong><span class="tag">Custom</span>'+higgsBadge+'</div>'+
-        refRow+
-        '<div class="row" style="width:100%"><input type="text" class="libdesc" value="'+curDesc+'" placeholder="'+tr("desc_hint")+'">'+
-        '<button class="btn sec" onclick="saveDesc(\''+n+'\',this.previousElementSibling.value)">'+(CFG.lang==="en"?"Save":"Speichern")+'</button>'+
+      // Debug-Bereich (Details): Reftext + Original-WAV
+      const debugRows = (ref?'<div class="refrow"><button class="refbtn" onclick="this.nextElementSibling.classList.toggle(\'open\')">'+(CFG.lang==="en"?"Reftext":"Reftext")+' ▾</button>'+
+        '<div class="reftxt">'+ref+'</div></div>':"")+
+        '<div class="row" style="margin-top:.3rem">'+
+          '<button class="btn sec" onclick="playVoiceWav(\''+n+'\')">'+(CFG.lang==="en"?"Original WAV":"Original-WAV")+' ▶</button>'+
+          '<a class="btn sec" href="/v1/voices/'+encodeURIComponent(n)+'/wav" download="'+n+'.wav">'+(CFG.lang==="en"?"Download WAV":"WAV laden")+'</a>'+
+        '</div>';
+      const details='<details class="voicedetails"><summary>'+(CFG.lang==="en"?"Details":"Details")+' ▾</summary><div style="margin-top:.3rem">'+debugRows+'</div></details>';
+      d.innerHTML='<div style="display:flex;align-items:center;gap:.4rem;flex-wrap:wrap"><strong>'+n+'</strong><span class="tag">Custom</span>'+higgsBadge+
+        '<span style="flex:1"></span>'+
         '<button class="btn sec" onclick="testVoice(\''+n+'\')">'+(CFG.lang==="en"?"Test":"Testen")+'</button>'+
-        '<button class="btn danger" onclick="delVoice(\''+n+'\')">'+(CFG.lang==="en"?"Delete":"Löschen")+'</button></div>';
+        '<button class="btn danger" onclick="delVoice(\''+n+'\')">'+(CFG.lang==="en"?"Delete":"Löschen")+'</button>'+
+        details+'</div>'+
+        '<div class="row" style="width:100%;margin-top:.3rem"><input type="text" class="libdesc" value="'+curDesc+'" placeholder="'+tr("desc_hint")+'">'+
+        '<button class="btn sec" onclick="saveDesc(\''+n+'\',this.previousElementSibling.value)">'+(CFG.lang==="en"?"Save":"Speichern")+'</button></div>';
       el.appendChild(d);
     });
     sys.forEach(n=>{
