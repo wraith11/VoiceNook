@@ -591,8 +591,9 @@ async function init(){
   if(!CFG.higgs_enabled){ $("tabHiggs").style.display="none"; $("paneHiggs").classList.remove("active"); setHgStatus("disabled"); }
   setHgStatus(CFG.higgs_enabled?"idle":"disabled");
   loadVox(); loadLib(); loadHg();
-  pollHiggs(false);
-  // Tab-Buttons neu beschriften (i18n)
+  pollModels();
+  // periodisch aktualisieren (Idle-Unload sichtbar machen)
+  setInterval(pollModels, 10000);
 }
 init();
 </script>
