@@ -283,6 +283,34 @@ def pathify_gen_kwargs(gen_kwargs: dict) -> None:
 
 def load_model(
     model_dir: str | None = None,
+def _setup_voice_caches(repo_id: str, model_dir: str | None,
+                        included_voice_cache_dir: str | None) -> None:
+    """Richtet VOICE_CACHE_DIR ein, damit Systemstimmen auch ohne geladenes Modell
+    sofort in /voices erscheinen."""
+    global MODEL_PATH_PREFIX, VOICE_CACHE_DIR, VOICE_CACHE_DIRS
+    if model_dir is not None:
+        MODEL_PATH_PREFIX = os.path.abspath(model_dir)
+    else:
+        MODEL_PATH_PREFIX = snapshot_download(repo_id=repo_id)
+    model_voice_cache_dir = os.path.join(MODEL_PATH_PREFIX, "caches")
+    if included_voice_cache_dir is not None:
+        VOICE_CACHE_DIR = os.path.abspath(included_voice_cache_dir)
+    elif os.path.isdir(model_voice_cache_dir):
+        VOICE_CACHE_DIR = model_voice_cache_dir
+    else:
+        voice_snapshot_dir = snapshot_download(
+            repo_id=repo_id, allow_patterns="caches/*")
+        VOICE_CACHE_DIR = os.path.join(voice_snapshot_dir, "caches")
+    VOICE_CACHE_DIRS = [VOICE_CACHE_DIR]
+    try:
+        hf_voice_snapshot_dir = snapshot_download(
+            repo_id=repo_id, allow_patterns="caches/*")
+        hf_voice_cache_dir = os.path.join(hf_voice_snapshot_dir, "caches")
+        if os.path.isdir(hf_voice_cache_dir) and os.path.abspath(
+                hf_voice_cache_dir) not in {os.path.abspath(d) for d in VOICE_CACHE_DIRS}:
+            VOICE_CACHE_DIRS.append(hf_voice_cache_dir)
+    except Exception as exc:
+        print(f"⚠️ Could not initialize HF voice cache fallback: {exc}")
     repo_id: str = REPO_ID,
     included_voice_cache_dir: str | None = None,
     embedding_path: str | None = None,
@@ -306,41 +334,7 @@ def load_model(
     """Load VoxCPM2Generator. Called once from main()."""
     global generator, MODEL_PATH_PREFIX, VOICE_CACHE_DIR, VOICE_CACHE_DIRS
 
-    if model_dir is not None:
-        MODEL_PATH_PREFIX = os.path.abspath(model_dir)
-        print(f"📂 Using local model directory: {MODEL_PATH_PREFIX}")
-    else:
-        print(f"🚀 Downloading models from HuggingFace: {repo_id}")
-        MODEL_PATH_PREFIX = snapshot_download(repo_id=repo_id)
-
-    model_voice_cache_dir = os.path.join(MODEL_PATH_PREFIX, "caches")
-    if included_voice_cache_dir is not None:
-        VOICE_CACHE_DIR = os.path.abspath(included_voice_cache_dir)
-        print(f"🎙️ Using included voice cache directory: {VOICE_CACHE_DIR}")
-    elif os.path.isdir(model_voice_cache_dir):
-        VOICE_CACHE_DIR = model_voice_cache_dir
-    else:
-        print(f"🎙️ Downloading included voice caches from HuggingFace: {repo_id}")
-        voice_snapshot_dir = snapshot_download(
-            repo_id=repo_id,
-            allow_patterns="caches/*",
-        )
-        VOICE_CACHE_DIR = os.path.join(voice_snapshot_dir, "caches")
-    VOICE_CACHE_DIRS = [VOICE_CACHE_DIR]
-
-    try:
-        hf_voice_snapshot_dir = snapshot_download(
-            repo_id=repo_id,
-            allow_patterns="caches/*",
-        )
-        hf_voice_cache_dir = os.path.join(hf_voice_snapshot_dir, "caches")
-        if os.path.isdir(hf_voice_cache_dir) and os.path.abspath(
-            hf_voice_cache_dir
-        ) not in {os.path.abspath(d) for d in VOICE_CACHE_DIRS}:
-            VOICE_CACHE_DIRS.append(hf_voice_cache_dir)
-            print(f"🎙️ Using HF voice cache fallback: {hf_voice_cache_dir}")
-    except Exception as exc:
-        print(f"⚠️ Could not initialize HF voice cache fallback: {exc}")
+    _setup_voice_caches(repo_id, model_dir, included_voice_cache_dir)
 
     base_lm_split_paths, resolved_base_lm_path, base_lm_splits = resolve_base_lm_paths(
         MODEL_PATH_PREFIX,
@@ -1315,6 +1309,7 @@ async def get_available_voices():
     system_voices = VOICE_STORE.names_from_dir(VOICE_CACHE_DIR)
     custom_voices = VOICE_STORE.names_from_dir(CUSTOM_VOICE_CACHE_DIR)
     custom_details = {}
+    custom_descriptions = {}
     for v in custom_voices:
         txt_path = os.path.join(CUSTOM_VOICE_CACHE_DIR, f"{v}.txt")
         if os.path.exists(txt_path):
@@ -1322,16 +1317,38 @@ async def get_available_voices():
                 custom_details[v] = f.read().strip()
         else:
             custom_details[v] = ""
+        desc_path = os.path.join(CUSTOM_VOICE_CACHE_DIR, f"{v}.desc.txt")
+        if os.path.exists(desc_path):
+            with open(desc_path, "r", encoding="utf-8") as f:
+                custom_descriptions[v] = f.read().strip()
+        else:
+            custom_descriptions[v] = ""
     return {
         "voices": voices,
         "count": len(voices),
         "system_voices": system_voices,
         "custom_voices": custom_voices,
         "custom_voice_details": custom_details,
+        "custom_voice_descriptions": custom_descriptions,
         "included_voice_cache_directory": VOICE_CACHE_DIR,
         "included_voice_cache_directories": VOICE_CACHE_DIRS,
         "custom_cache_directory": CUSTOM_VOICE_CACHE_DIR,
     }
+
+
+@app.post("/v1/voices/{voice_name}/description")
+async def set_voice_description(voice_name: str, body: dict):
+    name = VOICE_STORE.validate(voice_name)
+    if not VOICE_STORE.is_custom(name):
+        raise HTTPException(status_code=404, detail=f"Custom voice '{name}' not found")
+    desc = (body.get("description") or "").strip()
+    desc_path = os.path.join(CUSTOM_VOICE_CACHE_DIR, f"{name}.desc.txt")
+    if desc:
+        with open(desc_path, "w", encoding="utf-8") as f:
+            f.write(desc)
+    elif os.path.exists(desc_path):
+        os.unlink(desc_path)
+    return {"status": "success", "description": desc}
 
 
 @app.delete("/v1/voices/{voice_name}")
@@ -1350,6 +1367,7 @@ async def delete_voice(voice_name: str):
         ".prompt.decode_context.npy",
         ".npy",
         ".txt",
+        ".desc.txt",
         ".wav",
         ".flac",
         ".mp3",
@@ -1548,9 +1566,10 @@ async def api_higgs_load():
     from . import higgs_server as hs
     if not HIGGS_ENABLED:
         raise HTTPException(status_code=400, detail="Higgs ist deaktiviert")
-    with MODEL_LOCK:
-        if SINGLE_MODEL:
-            vox_unload()
+    # Kein MODEL_LOCK hier: vox_unload() lockt selbst (nicht-reentrant). 
+    # Erst Vox entladen, dann Higgs laden (single-model).
+    if SINGLE_MODEL:
+        vox_unload()
     await asyncio.to_thread(hs.load_model)
     return {"higgs_loaded": hs.is_loaded()}
 
@@ -1786,6 +1805,9 @@ def main():
                      "steps_default", "no_higgs", "single_model", "idle_timeout",
                      "higgs_model"}
     }
+
+    # Systemstimmen bereits beim Start verfuegbar (auch ohne geladenes Modell)
+    _setup_voice_caches(args.repo_id, args.model_dir, args.included_voice_cache_dir)
 
     # Higgs in-process mounten + konfigurieren
     from . import higgs_server as hs

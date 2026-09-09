@@ -26,12 +26,21 @@
   .btn.danger{background:var(--err)}
   .btn.ok{background:var(--ok);color:#0b1210}
   .tag{display:inline-block;background:var(--panel2);border:1px solid var(--line);border-radius:5px;padding:.1rem .45rem;font-size:.72rem;margin:.15rem .1rem;color:var(--mut)}
+  .hibadge{display:inline-flex;align-items:center;gap:.25rem;color:var(--err);border:1px solid var(--err);border-radius:50%;padding:.05rem .45rem;font-size:.7rem;font-weight:700;cursor:default}
+  .libdesc{flex:1;min-width:140px}
   #status{margin:.6rem 0;font-size:.88rem;min-height:1.2em}
   .voice{display:flex;justify-content:space-between;align-items:center;gap:.6rem;padding:.5rem .4rem;border-bottom:1px solid var(--line);flex-wrap:wrap}
   .voice:last-child{border-bottom:none}
   .voice .meta{font-size:.78rem;color:var(--mut)}
   .prog{display:none;height:6px;background:var(--panel2);border-radius:3px;overflow:hidden;margin-top:.5rem}
   .prog>div{height:100%;width:0;background:var(--acc)}
+  /* Springende Punkte (in-progress) */
+  .dots{display:none;gap:4px;align-items:center;margin-left:.4rem}
+  .dots i{width:6px;height:6px;border-radius:50%;background:var(--acc);animation:dotb 1.2s infinite}
+  .dots i:nth-child(2){animation-delay:.2s}
+  .dots i:nth-child(3){animation-delay:.4s}
+  .dots.dots-on{display:inline-flex}
+  @keyframes dotb{0%,60%,100%{transform:translateY(0);opacity:.4}30%{transform:translateY(-5px);opacity:1}}
   .tabs{display:flex;gap:.4rem;margin-bottom:1rem;border-bottom:1px solid var(--line)}
   .tab{background:var(--panel2);border:1px solid var(--line);border-bottom:none;border-radius:8px 8px 0 0;padding:.55rem 1.2rem;cursor:pointer;color:var(--mut);font-size:.95rem}
   .tab.active{background:var(--acc);color:#fff;border-color:var(--acc)}
@@ -106,8 +115,8 @@
           </div>
         </span>
         <button class="btn sec" id="stopBtn" data-i18n="stop">Stopp</button>
+        <span class="dots" id="voxDots"><i></i><i></i><i></i></span>
       </div>
-      <div class="prog" id="prog"><div></div></div>
     </div>
     <div class="card">
       <label data-i18n="result">Ergebnis</label>
@@ -124,6 +133,7 @@
         <button class="btn sec" id="voxDl" disabled data-i18n="download">Download</button>
         <button class="btn ok" id="saveGenBtn" disabled data-i18n="save_voice">Als Stimme speichern</button>
       </div>
+      <div id="voxResultMsg" style="margin-top:.5rem;font-size:.85rem;min-height:1.2em"></div>
     </div>
   </div>
 
@@ -148,10 +158,17 @@
         </div>
       </details>
       <div class="row" style="margin-top:.8rem">
-        <button class="btn" id="hgGenBtn" data-i18n="gen_play">Generate &amp; play</button>
+        <span class="split">
+          <button class="main" id="hgGenBtn" data-i18n="gen_play">Generate &amp; play</button>
+          <button class="caret" id="hgGenCaret">▾</button>
+          <div class="dropmenu" id="hgGenMenu" style="display:none">
+            <button id="hgOptPlay">Generate &amp; play</button>
+            <button id="hgOptOnly">Generate only</button>
+          </div>
+        </span>
         <button class="btn sec" id="hgStopBtn" data-i18n="stop">Stopp</button>
+        <span class="dots" id="hgDots"><i></i><i></i><i></i></span>
       </div>
-      <div class="prog" id="hgProg"><div></div></div>
     </div>
     <div class="card">
       <label data-i18n="result">Ergebnis</label>
@@ -164,6 +181,7 @@
         </select>
         <button class="btn sec" id="hgDl" disabled data-i18n="download">Download</button>
       </div>
+      <div id="hgResultMsg" style="margin-top:.5rem;font-size:.85rem;min-height:1.2em"></div>
     </div>
   </div>
 
@@ -180,7 +198,7 @@
     <div class="card">
       <h3 data-i18n="existing">Vorhandene Stimmen</h3>
       <label data-i18n="testsentence">Testsatz für die Vorschau</label>
-      <input type="text" id="testSentence" value="Hallo, das ist ein Test meiner Stimme.">
+      <input type="text" id="testSentence" style="width:100%" value="Hallo, das ist ein Test meiner Stimme.">
       <div id="libList" style="margin-top:.4rem"><p class="hint">Lade…</p></div>
     </div>
   </div>
@@ -196,7 +214,6 @@ let abortCtrl=null;
 let ctx=null, nextT=0;
 let vox={parts:[],rate:48000,wav:null,cachedText:""};
 let hg={parts:[],rate:24000,wav:null};
-let hgRunning=false;
 
 /* ---------- i18n ---------- */
 const T={
@@ -217,7 +234,10 @@ const T={
     no_audio:"Kein Audio erzeugt.",aborted:"Abgebrochen.",name_req:"Name angeben.",test_play:"Test abgespielt.",
     testing:"Teste Stimme '{name}'…",dl_start:"Download gestartet.",download_err:"Fehler Download: {msg}",
     higgs_down:"Higgs-Server nicht erreichbar. Klick auf den Status startet ihn.",
-    higgs_auto:"Higgs wurde automatisch gestartet. Der erste Lauf lädt das Modell und dauert etwas."},
+    higgs_auto:"Higgs wurde automatisch gestartet. Der erste Lauf lädt das Modell und dauert etwas.",
+    mdl_loaded_vox:"VoxCPM2 geladen",mdl_idle_vox:"VoxCPM2 inaktiv",
+    mdl_loaded_higgs:"Higgs geladen",mdl_idle_higgs:"Higgs inaktiv",
+    load:"Laden",unload:"Entladen",desc_hint:"Beschreibung (optional)",desc_saved:"Beschreibung für '{name}' gespeichert."},
   en:{tab_vox:"VoxCPM2",tab_higgs:"Higgs v3",tab_lib:"Voice Library",mode:"Mode",
     mode_design:"Voice Design (description only)",mode_ref:"Clone (Reference + description)",
     mode_high:"Clone (High similarity, no description)",desc:"Voice description (English)",
@@ -235,7 +255,10 @@ const T={
     no_audio:"No audio produced.",aborted:"Aborted.",name_req:"Please provide a name.",test_play:"Test played.",
     testing:"Testing voice '{name}'…",dl_start:"Download started.",download_err:"Download error: {msg}",
     higgs_down:"Higgs server unreachable. Click the status to start it.",
-    higgs_auto:"Higgs started automatically. The first run loads the model and takes a moment."}
+    higgs_auto:"Higgs started automatically. The first run loads the model and takes a moment.",
+    mdl_loaded_vox:"VoxCPM2 loaded",mdl_idle_vox:"VoxCPM2 idle",
+    mdl_loaded_higgs:"Higgs loaded",mdl_idle_higgs:"Higgs idle",
+    load:"Load",unload:"Unload",desc_hint:"Description (optional)",desc_saved:"Description saved for '{name}'."}
 };
 function tr(key,params){
   let s=(T[CFG.lang]||T.de)[key]||key;
@@ -253,15 +276,27 @@ function applyI18n(){
 
 /* ---------- Status ---------- */
 function status(msg,ok=true){ $("status").textContent=msg; $("status").style.color=ok?"var(--txt)":"var(--err)"; }
-function progress(el,p){ el.style.display=p>=0?"block":"none"; if(p>=0)el.firstElementChild.style.width=p+"%"; }
+// Status unter dem Ergebnis-Bereich
+function rstatus(id,msg,ok=true){ const el=$(id); if(!el)return; el.textContent=msg; el.style.color=ok?"var(--txt)":"var(--err)"; }
 function esc(s){return s.replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+
+/* ---------- In-Progress-Dots (3 springende Punkte) ---------- */
+let dotTimers=[];
+function showDots(container){
+  stopDots();
+  const el=$(container); if(!el)return;
+  el.classList.add("dots-on");
+}
+function stopDots(){
+  document.querySelectorAll(".dots-on").forEach(e=>e.classList.remove("dots-on"));
+}
 
 /* ---------- Tabs ---------- */
 function setTab(w){
   [["tabVox","paneVox"],["tabHiggs","paneHiggs"],["tabLib","paneLib"]].forEach(([t,p])=>{
     $(t).classList.toggle("active",w===p); $(p).classList.toggle("active",w===p);
   });
-  if(w==="paneHiggs") pollHiggs(true);
+  if(w==="paneHiggs") pollModels();
 }
 $("tabVox").onclick=()=>setTab("paneVox");
 $("tabHiggs").onclick=()=>setTab("paneHiggs");
@@ -275,7 +310,7 @@ function getCtx(sr){
 }
 function playPCM16(ab,sr){
   const n=Math.floor(ab.byteLength/2); if(n<=0)return;
-  const i16=new Int16Array(ab,0,n), f32=new Float32Array(n);
+  const i16=new Int16Array(ab.buffer, ab.byteOffset, n), f32=new Float32Array(n);
   for(let i=0;i<n;i++) f32[i]=i16[i]/32768;
   const c=getCtx(sr), now=c.currentTime;
   if(nextT<now+0.12)nextT=now+0.12;
@@ -286,7 +321,7 @@ function playPCM16(ab,sr){
 function buildWav(parts,sr){
   let total=0; parts.forEach(a=>total+=Math.floor(a.byteLength/2));
   const pcm=new Int16Array(total); let off=0;
-  parts.forEach(ab=>{const n=Math.floor(ab.byteLength/2);pcm.set(new Int16Array(ab,0,n),off);off+=n;});
+  parts.forEach(ab=>{const n=Math.floor(ab.byteLength/2);pcm.set(new Int16Array(ab.buffer, ab.byteOffset, n),off);off+=n;});
   const buf=new ArrayBuffer(44+pcm.length*2),dv=new DataView(buf);
   const ws=(o,s)=>{for(let i=0;i<s.length;i++)dv.setUint8(o+i,s.charCodeAt(i));};
   ws(0,"RIFF");dv.setUint32(4,36+pcm.length*2,true);ws(8,"WAVE");
@@ -317,22 +352,33 @@ function updateGenBtn(){
   $("optPlay").classList.toggle("on",genMode==="play");
   $("optOnly").classList.toggle("on",genMode==="only");
 }
+/* Higgs eigener Modus (Generate & play / only) */
+let hgGenMode="play";
+$("hgGenCaret").onclick=(e)=>{e.stopPropagation();$("hgGenMenu").style.display=$("hgGenMenu").style.display==="none"?"block":"none";};
+document.addEventListener("click",()=>{$("hgGenMenu").style.display="none";});
+$("hgOptPlay").onclick=()=>{hgGenMode="play";updateHgGenBtn();$("hgGenMenu").style.display="none";};
+$("hgOptOnly").onclick=()=>{hgGenMode="only";updateHgGenBtn();$("hgGenMenu").style.display="none";};
+function updateHgGenBtn(){
+  $("hgGenBtn").textContent=tr(hgGenMode==="play"?"gen_play":"gen_only_opt");
+  $("hgOptPlay").classList.toggle("on",hgGenMode==="play");
+  $("hgOptOnly").classList.toggle("on",hgGenMode==="only");
+}
 
 /* ---------- Modell-Status (VoxCPM2 + Higgs) ---------- */
 let voxLoaded=false, hgLoaded=false;
 function setHgStatus(state){
   const el=$("hgStatus"),dot=$("hgDot");
   el.classList.remove("on");
-  if(state==="active"){el.classList.add("on");$("hgStatusTxt").textContent=tr("hg_active");el.title=tr("hg_stop");}
+  if(state==="active"){el.classList.add("on");$("hgStatusTxt").textContent=tr("mdl_loaded_higgs");el.title=tr("unload");}
   else if(state==="loading"){$("hgStatusTxt").textContent=tr("hg_loading");el.title="";}
   else if(state==="disabled"){$("hgStatusTxt").textContent=tr("hg_disabled");el.title="";}
-  else{$("hgStatusTxt").textContent=tr("hg_idle");el.title=tr("hg_start");}
+  else{$("hgStatusTxt").textContent=tr("mdl_idle_higgs");el.title=tr("load");}
 }
 function setVoxStatus(){
-  const el=$("voxStatus"),dot=$("voxDot");
+  const el=$("voxStatus");
   el.classList.toggle("on",voxLoaded);
-  $("voxStatusTxt").textContent=voxLoaded?(CFG.lang==="en"?"VoxCPM2 loaded":"VoxCPM2 geladen"):(CFG.lang==="en"?"VoxCPM2 idle":"VoxCPM2 inaktiv");
-  el.title=voxLoaded?(CFG.lang==="en"?"Unload":"Entladen"):(CFG.lang==="en"?"Load":"Laden");
+  $("voxStatusTxt").textContent=voxLoaded?tr("mdl_loaded_vox"):tr("mdl_idle_vox");
+  el.title=voxLoaded?tr("unload"):tr("load");
 }
 async function pollModels(){
   try{
@@ -393,7 +439,7 @@ $("genBtn").onclick=async()=>{
   const btn=$("genBtn"); btn.disabled=true;
   vox={parts:[],rate:48000,wav:null,cachedText:$("text").value};
   $("voxPlayer").src=""; $("voxDl").disabled=true; $("saveGenBtn").disabled=true;
-  progress($("prog"),0); const t0=performance.now(); let ttfb=null;
+  rstatus("voxResultMsg",""); showDots("voxDots"); const t0=performance.now(); let ttfb=null;
   abortCtrl=new AbortController();
   try{
     // generate only: nicht-streamende WAV abrufen; generate & play: streamen
@@ -403,31 +449,29 @@ $("genBtn").onclick=async()=>{
     const sr=Number(r.headers.get("X-Sample-Rate"))||48000; vox.rate=sr;
     if(genMode==="only"){
       const ab=await r.arrayBuffer();
-      // WAV-Datei (vom Server) direkt nutzen
       vox.wav=new Blob([ab],{type:"audio/wav"});
       vox.parts=[ab];
       $("voxPlayer").src=URL.createObjectURL(vox.wav);
       $("voxDl").disabled=false; $("saveGenBtn").disabled=false;
-      status(tr("gen_only_done",{s:Math.round(ab.byteLength/2/sr)}));
+      rstatus("voxResultMsg",tr("gen_only_done",{s:Math.round(ab.byteLength/2/sr)}));
     } else {
       const rd=r.body.getReader();
       while(true){const{done,value}=await rd.read();if(done)break;
-        if(value&&value.byteLength){if(ttfb===null){ttfb=Math.round(performance.now()-t0);status(tr("gen_ttfb",{ms:ttfb}));}playPCM16(value,sr);vox.parts.push(value);}}
+        if(value&&value.byteLength){if(ttfb===null){ttfb=Math.round(performance.now()-t0);rstatus("voxResultMsg",tr("gen_ttfb",{ms:ttfb}));}playPCM16(value,sr);vox.parts.push(value);}}
       if(vox.parts.length){ vox.wav=buildWav(vox.parts,sr);
         $("voxPlayer").src=URL.createObjectURL(vox.wav);
         $("voxDl").disabled=false; $("saveGenBtn").disabled=false;
-        status(tr("gen_done",{s:Math.round(vox.parts.reduce((s,a)=>s+a.byteLength,0)/2/sr),ms:ttfb}));
-      } else status(tr("no_audio"),false);
+        rstatus("voxResultMsg",tr("gen_done",{s:Math.round(vox.parts.reduce((s,a)=>s+a.byteLength,0)/2/sr),ms:ttfb}));
+      } else rstatus("voxResultMsg",tr("no_audio"),false);
     }
-    progress($("prog"),100);
-  }catch(e){if(e.name!=="AbortError")status(tr("error",{msg:e.message}),false);else status(tr("aborted"));}
-  finally{btn.disabled=false;progress($("prog"),-1);}
+  }catch(e){if(e.name!=="AbortError")rstatus("voxResultMsg",tr("error",{msg:e.message}),false);else rstatus("voxResultMsg",tr("aborted"));}
+  finally{btn.disabled=false;stopDots();}
 };
 $("stopBtn").onclick=()=>{if(abortCtrl)abortCtrl.abort();};
 $("voxDl").onclick=async()=>{
   if(!vox.wav)return; const fmt=$("voxFmt").value;
-  try{ if(fmt==="wav")triggerDownload(vox.wav,"stimme.wav"); else await convertDownload(vox.wav,"stimme",fmt); status(tr("dl_start")); }
-  catch(e){status(tr("download_err",{msg:e.message}),false);}
+  try{ if(fmt==="wav")triggerDownload(vox.wav,"voice.wav"); else await convertDownload(vox.wav,"voice",fmt); rstatus("voxResultMsg",tr("dl_start")); }
+  catch(e){rstatus("voxResultMsg",tr("download_err",{msg:e.message}),false);}
 };
 $("saveGenBtn").onclick=async()=>{
   if(!vox.wav){status(tr("error",{msg:"no wav"}),false);return;}
@@ -487,45 +531,45 @@ async function ensureHiggs(){
   return true;
 }
 $("hgGenBtn").onclick=async()=>{
-  if(!$("hgText").value.trim()){status(tr("enter_text"),false);return;}
-  const v=$("hgVoice").value; if(!v){status(tr("choose_voice"),false);return;}
+  if(!$("hgText").value.trim()){rstatus("hgResultMsg",tr("enter_text"),false);return;}
+  const v=$("hgVoice").value; if(!v){rstatus("hgResultMsg",tr("choose_voice"),false);return;}
   const btn=$("hgGenBtn"); btn.disabled=true;
-  status(tr("higgs_auto"));
-  if(!(await ensureHiggs())){status(tr("higgs_down"),false);btn.disabled=false;return;}
+  rstatus("hgResultMsg",tr("higgs_auto"));
+  showDots("hgDots");
+  if(!(await ensureHiggs())){rstatus("hgResultMsg",tr("higgs_down"),false);btn.disabled=false;stopDots();return;}
   hg={parts:[],rate:24000,wav:null};
   $("hgPlayer").src=""; $("hgDl").disabled=true;
-  progress($("hgProg"),0); const t0=performance.now(); let ttfb=null;
+  const t0=performance.now(); let ttfb=null;
   abortCtrl=new AbortController();
   const p={voice:v,text:$("hgText").value,temperature:+$("hgTemp").value,seam_frames:+$("hgSeam").value};
   const seed=$("hgSeed").value.trim(); if(seed!=="")p.seed=+seed;
   try{
-    const url = genMode==="only" ? "/api/synthesize" : "/api/synthesize/stream";
+    const url = hgGenMode==="only" ? "/api/synthesize" : "/api/synthesize/stream";
     const r=await fetch(HIGGS_URL+url,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(p),signal:abortCtrl.signal});
     if(!r.ok){let m=r.statusText;try{m=(await r.json()).detail||m;}catch(e){}throw new Error(m);}
     const sr=Number(r.headers.get("X-Sample-Rate"))||24000; hg.rate=sr;
-    if(genMode==="only"){
+    if(hgGenMode==="only"){
       const ab=await r.arrayBuffer();
       hg.wav=new Blob([ab],{type:"audio/wav"}); hg.parts=[ab];
       $("hgPlayer").src=URL.createObjectURL(hg.wav); $("hgDl").disabled=false;
-      status(tr("gen_only_done",{s:Math.round(ab.byteLength/2/sr)}));
+      rstatus("hgResultMsg",tr("gen_only_done",{s:Math.round(ab.byteLength/2/sr)}));
     } else {
       const rd=r.body.getReader();
       while(true){const{done,value}=await rd.read();if(done)break;
-        if(value&&value.byteLength){if(ttfb===null){ttfb=Math.round(performance.now()-t0);status(tr("gen_ttfb",{ms:ttfb}));}playPCM16(value,sr);hg.parts.push(value);}}
+        if(value&&value.byteLength){if(ttfb===null){ttfb=Math.round(performance.now()-t0);rstatus("hgResultMsg",tr("gen_ttfb",{ms:ttfb}));}playPCM16(value,sr);hg.parts.push(value);}}
       if(hg.parts.length){ hg.wav=buildWav(hg.parts,sr);
         $("hgPlayer").src=URL.createObjectURL(hg.wav); $("hgDl").disabled=false;
-        status(tr("gen_done",{s:Math.round(hg.parts.reduce((s,a)=>s+a.byteLength,0)/2/sr),ms:ttfb}));
-      } else status(tr("no_audio"),false);
+        rstatus("hgResultMsg",tr("gen_done",{s:Math.round(hg.parts.reduce((s,a)=>s+a.byteLength,0)/2/sr),ms:ttfb}));
+      } else rstatus("hgResultMsg",tr("no_audio"),false);
     }
-    progress($("hgProg"),100);
-  }catch(e){if(e.name!=="AbortError")status(tr("error",{msg:e.message}),false);else status(tr("aborted"));}
-  finally{btn.disabled=false;progress($("hgProg"),-1);}
+  }catch(e){if(e.name!=="AbortError")rstatus("hgResultMsg",tr("error",{msg:e.message}),false);else rstatus("hgResultMsg",tr("aborted"));}
+  finally{btn.disabled=false;stopDots();}
 };
 $("hgStopBtn").onclick=()=>{if(abortCtrl)abortCtrl.abort();};
 $("hgDl").onclick=async()=>{
   if(!hg.wav)return; const fmt=$("hgFmt").value;
-  try{ if(fmt==="wav")triggerDownload(hg.wav,"higgs.wav"); else await convertDownload(hg.wav,"higgs",fmt); status(tr("dl_start")); }
-  catch(e){status(tr("download_err",{msg:e.message}),false);}
+  try{ if(fmt==="wav")triggerDownload(hg.wav,"voice.wav"); else await convertDownload(hg.wav,"voice",fmt); rstatus("hgResultMsg",tr("dl_start")); }
+  catch(e){rstatus("hgResultMsg",tr("download_err",{msg:e.message}),false);}
 };
 
 /* ---------- STIMMEN-BIBLIOTHEK ---------- */
@@ -544,7 +588,8 @@ async function testVoice(name){
 async function loadLib(){
   try{
     const j=await(await fetch("/voices")).json();
-    const sys=j.system_voices||[], cus=j.custom_voices||[], det=j.custom_voice_details||{};
+    const sys=j.system_voices||[], cus=j.custom_voices||[];
+    const det=j.custom_voice_details||{}, desc=j.custom_voice_descriptions||{};
     const el=$("libList");
     if(!sys.length&&!cus.length){el.innerHTML='<p class="hint">'+(CFG.lang==="en"?"No voices yet.":"Keine Stimmen vorhanden.")+'</p>';return;}
     el.innerHTML="";
@@ -556,12 +601,25 @@ async function loadLib(){
     });
     cus.forEach(n=>{
       const d=document.createElement("div"); d.className="voice";
-      const rt=det[n]?"<div class='meta'>Reftext: "+esc(det[n])+"</div>":"";
-      d.innerHTML='<div><strong>'+n+'</strong> <span class="tag">Custom</span>'+rt+'</div>'+
+      // Higgs-Verfuegbarkeit: hat die Stimme eine .wav? (in voicesHg aus /higgs/api/voices)
+      const hasHiggs = (voicesHg||[]).indexOf(n)!==-1;
+      const higgsBadge = hasHiggs?"":'<span class="hibadge" title="'+(CFG.lang==="en"?"Not available in Higgs":"Nicht für Higgs verfügbar")+'">✕ Higgs</span>';
+      const curDesc = desc[n]||"";
+      d.innerHTML='<div style="display:flex;align-items:center;gap:.4rem"><strong>'+n+'</strong><span class="tag">Custom</span>'+higgsBadge+'</div>'+
+        '<div class="row" style="width:100%"><input type="text" class="libdesc" value="'+esc(curDesc)+'" placeholder="'+tr("desc_hint")+'">'+
+        '<button class="btn sec" onclick="saveDesc(\''+n+'\',this.previousElementSibling.value)">'+(CFG.lang==="en"?"Save":"Speichern")+'</button>'+
         '<button class="btn sec" onclick="testVoice(\''+n+'\')">'+(CFG.lang==="en"?"Test":"Testen")+'</button>'+
-        '<button class="btn danger" onclick="delVoice(\''+n+'\')">'+(CFG.lang==="en"?"Delete":"Löschen")+'</button>';
+        '<button class="btn danger" onclick="delVoice(\''+n+'\')">'+(CFG.lang==="en"?"Delete":"Löschen")+'</button></div>';
       el.appendChild(d);
     });
+  }catch(e){status(tr("error",{msg:e.message}),false);}
+}
+async function saveDesc(name,desc){
+  try{
+    const r=await fetch("/v1/voices/"+encodeURIComponent(name)+"/description",{method:"POST",
+      headers:{"Content-Type":"application/json"},body:JSON.stringify({description:desc||""})});
+    if(!r.ok)throw new Error((await r.json()).detail||r.statusText);
+    status(tr("desc_saved",{name}));
   }catch(e){status(tr("error",{msg:e.message}),false);}
 }
 async function delVoice(name){
@@ -588,8 +646,8 @@ async function init(){
     const c=await(await fetch("/api/config")).json();
     CFG={...CFG,...c}; HIGGS_URL=c.higgs_url||HIGGS_URL;
   }catch(e){}
-  $("cfg").value=CFG.cfg_default; $("steps").value=CFG.steps_default;
-  applyI18n(); updateGenBtn();
+  $("cfg").value=Number(CFG.cfg_default).toFixed(1); $("steps").value=CFG.steps_default;
+  applyI18n(); updateGenBtn(); updateHgGenBtn();
   // Higgs-Tab ausblenden, wenn deaktiviert
   if(!CFG.higgs_enabled){ $("tabHiggs").style.display="none"; $("paneHiggs").classList.remove("active"); setHgStatus("disabled"); }
   setHgStatus(CFG.higgs_enabled?"idle":"disabled");
