@@ -471,12 +471,13 @@ async function loadHg(){
 }
 async function ensureHiggs(){
   if(!CFG.higgs_enabled)return false;
-  if(!hgRunning){
+  if(!hgLoaded){
     setHgStatus("loading");
-    try{await fetch("/api/higgs/start",{method:"POST"});}catch(e){}
-    // warten bis Higgs bereit ist
-    for(let i=0;i<30;i++){ await new Promise(r=>setTimeout(r,1000));
-      try{const j=await(await fetch(HIGGS_URL+"/health")).json(); if(j.status==="healthy"){hgRunning=true;setHgStatus("active");return true;} }catch(e){}
+    try{await fetch("/api/models/higgs/load",{method:"POST"});}catch(e){}
+    // warten bis Higgs-Modell geladen ist
+    for(let i=0;i<60;i++){ await new Promise(r=>setTimeout(r,1000));
+      try{const j=await(await fetch(HIGGS_URL+"/health")).json(); if(j.status==="healthy"&&j.model_loaded){hgLoaded=true;setHgStatus("active");return true;} }catch(e){}
+      try{const m=await(await fetch("/api/models")).json(); if(m.higgs_loaded){hgLoaded=true;setHgStatus("active");return true;} }catch(e){}
     }
     setHgStatus("idle"); return false;
   }
