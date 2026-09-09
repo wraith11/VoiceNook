@@ -29,11 +29,11 @@
   .hibadge{display:inline-flex;align-items:center;gap:.3rem;color:var(--err);font-size:.72rem;cursor:default}
   .hibadge .xcircle{display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;border-radius:50%;border:1.5px solid var(--err);color:var(--err);font-size:.65rem;line-height:1}
   .libdesc{flex:1;min-width:140px}
-  /* Reftext-Button ohne Rahmen; Klick vergroessert die Zeile (Block innerhalb der Card) */
-  .refdrop{display:inline-block;vertical-align:middle}
-  .refdrop .refbtn{background:none;border:none;color:var(--acc);cursor:pointer;font-size:.75rem;padding:0;text-decoration:underline;text-underline-offset:2px}
-  .refdrop .reftxt{display:none;margin-top:.35rem;padding:.45rem .6rem;background:var(--panel2);border:1px solid var(--line);border-radius:6px;font-size:.78rem;color:var(--txt);white-space:normal}
-  .refdrop.open .reftxt{display:block}
+  /* Reftext-Button ohne Rahmen; Klick blendet Reftext in eigener Zeile ein */
+  .refrow{margin:.3rem 0}
+  .refbtn{background:none;border:none;color:var(--acc);cursor:pointer;font-size:.75rem;padding:0;text-decoration:underline;text-underline-offset:2px}
+  .refrow .reftxt{display:none;margin-top:.35rem;padding:.45rem .6rem;background:var(--panel2);border:1px solid var(--line);border-radius:6px;font-size:.78rem;color:var(--txt);white-space:normal}
+  .refrow .reftxt.open{display:block}
   #status{margin:.6rem 0;font-size:.88rem;min-height:1.2em}
   .voice{display:flex;justify-content:space-between;align-items:center;gap:.6rem;padding:.5rem .4rem;border-bottom:1px solid var(--line);flex-wrap:wrap}
   .voice:last-child{border-bottom:none}
