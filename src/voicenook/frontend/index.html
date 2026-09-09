@@ -481,7 +481,7 @@ $("voxDl").onclick=async()=>{
   catch(e){rstatus("voxResultMsg",tr("download_err",{msg:e.message}),false);}
 };
 $("saveGenBtn").onclick=async()=>{
-  if(!vox.wav){status(tr("error",{msg:"no wav"}),false);return;}
+  if(!vox.wav){rstatus("voxResultMsg",tr("error",{msg:"no wav"}),false);return;}
   const name=prompt(CFG.lang==="en"?"Voice name:":"Name der Stimme:"); if(!name||!name.trim())return;
   const fd=new FormData();
   fd.append("voice_name",name.trim()); fd.append("prompt_text",vox.cachedText); fd.append("file",vox.wav,name+".wav");
