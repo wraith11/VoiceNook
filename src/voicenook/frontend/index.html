@@ -605,6 +605,18 @@ async function testVoice(name){
 }
 async function loadLib(){
   try{
+async function playVoiceWav(name){
+  try{
+    const r=await fetch("/v1/voices/"+encodeURIComponent(name)+"/wav");
+    if(!r.ok){ let m=r.statusText; try{m=(await r.json()).detail||m;}catch(e){} throw new Error(m); }
+    const ab=await r.arrayBuffer();
+    // WAV-Header (44 Bytes) abspalten -> rohe PCM16
+    const pcm = ab.byteLength>44 ? ab.slice(44) : ab;
+    playPCM16(pcm, 16000);
+    rstatus("libMsg",tr("test_play"));
+  }catch(e){rstatus("libMsg",tr("error",{msg:e.message}),false);}
+}
+async function loadLib(){
     // Sicherstellen, dass voicesHg (Higgs-Verfuegbarkeit) geladen ist
     if(!voicesHg.length){ try{ await loadHg(); }catch(e){} }
     const j=await(await fetch("/voices")).json();
