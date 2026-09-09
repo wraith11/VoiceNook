@@ -1370,6 +1370,62 @@ async def delete_voice(voice_name: str):
 @app.get("/health")
 async def health_check():
     is_processing = CURRENT_JOB is not None
+
+@app.post("/v1/voices/upload")
+async def upload_voice(
+    voice_name: str = Form(...),
+    prompt_text: str = Form(""),
+    file: UploadFile = File(...),
+):
+    name = VOICE_STORE.validate(voice_name)
+    if VOICE_STORE.is_default(name):
+        raise HTTPException(status_code=403, detail=f"'{name}' ist eine Systemstimme")
+    embed_path = os.path.join(CUSTOM_VOICE_CACHE_DIR, f"{name}.embed.npy")
+    if os.path.exists(embed_path):
+        raise HTTPException(status_code=409,
+                            detail=f"'{name}' existiert bereits. Anderen Namen wählen oder erst löschen.")
+
+    if not PYDUB_AVAILABLE:
+        raise HTTPException(status_code=501,
+                            detail="pydub für die Konvertierung nötig: pip install pydub (und ffmpeg)")
+
+    os.makedirs(CUSTOM_VOICE_CACHE_DIR, exist_ok=True)
+    ext = os.path.splitext(file.filename or "")[1].lower()
+    tmp = os.path.join(CUSTOM_VOICE_CACHE_DIR, f"__{name}_in{ext or '.wav'}")
+    with open(tmp, "wb") as f:
+        import shutil
+        shutil.copyfileobj(file.file, f)
+
+    try:
+        seg = AudioSegment.from_file(tmp)
+        seg = seg.set_channels(1).set_frame_rate(16000)
+        dest = os.path.join(CUSTOM_VOICE_CACHE_DIR, f"{name}.wav")
+        seg.export(dest, format="wav")
+        os.remove(tmp)
+
+        prompt_text_val = (prompt_text or "").strip()
+        mode = _compile_custom_voice(name, dest, prompt_text_val)
+        return {"status": "success", "message": f"Stimme '{name}' erstellt.",
+                "mode": mode, "voice": name}
+    except Exception as e:
+        if os.path.exists(tmp):
+            os.remove(tmp)
+        raise HTTPException(status_code=500, detail=f"Fehler: {e}")
+
+
+@app.post("/api/convert")
+async def convert_audio(file: UploadFile = File(...), to_format: str = Form("mp3")):
+    if not PYDUB_AVAILABLE:
+        raise HTTPException(status_code=501, detail="pydub nicht installiert: pip install pydub")
+    data = await file.read()
+    seg = AudioSegment.from_file(io.BytesIO(data))
+    to_format = to_format.lower()
+    export_format, media_type = PYDUB_AUDIO_FORMATS.get(to_format, (None, None))
+    if export_format is None:
+        raise HTTPException(status_code=400, detail=f"Unsupported format: {to_format}")
+    buf = io.BytesIO()
+    seg.export(buf, format=export_format)
+    return Response(content=buf.getvalue(), media_type=media_type)
     return {
         "status": "healthy",
         "is_processing": is_processing,
