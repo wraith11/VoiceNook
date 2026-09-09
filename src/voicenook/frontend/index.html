@@ -638,8 +638,8 @@ async function delVoice(name){
   if(!confirm(CFG.lang==="en"?("Delete voice '"+name+"'?"):("Stimme '"+name+"' löschen?")))return;
   try{const r=await fetch("/v1/voices/"+encodeURIComponent(name),{method:"DELETE"});
     if(!r.ok)throw new Error((await r.json()).detail||r.statusText);
-    status(tr("deleted",{name})); loadVox(); loadHg(); loadLib();
-  }catch(e){status(tr("error",{msg:e.message}),false);}
+    rstatus("libMsg",tr("deleted",{name})); loadVox(); loadHg(); loadLib();
+  }catch(e){rstatus("libMsg",tr("error",{msg:e.message}),false);}
 }
 $("libCreateBtn").onclick=async()=>{
   const name=$("libName").value.trim(), file=$("libFile").files[0];
