@@ -1302,11 +1302,20 @@ async def get_available_voices():
     voices = VOICE_STORE.available()
     system_voices = VOICE_STORE.names_from_dir(VOICE_CACHE_DIR)
     custom_voices = VOICE_STORE.names_from_dir(CUSTOM_VOICE_CACHE_DIR)
+    custom_details = {}
+    for v in custom_voices:
+        txt_path = os.path.join(CUSTOM_VOICE_CACHE_DIR, f"{v}.txt")
+        if os.path.exists(txt_path):
+            with open(txt_path, "r", encoding="utf-8") as f:
+                custom_details[v] = f.read().strip()
+        else:
+            custom_details[v] = ""
     return {
         "voices": voices,
         "count": len(voices),
         "system_voices": system_voices,
         "custom_voices": custom_voices,
+        "custom_voice_details": custom_details,
         "included_voice_cache_directory": VOICE_CACHE_DIR,
         "included_voice_cache_directories": VOICE_CACHE_DIRS,
         "custom_cache_directory": CUSTOM_VOICE_CACHE_DIR,
