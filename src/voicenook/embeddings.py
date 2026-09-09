@@ -50,7 +50,7 @@ def load_embed_tokens_from_safetensors(
     except ImportError as exc:
         raise ImportError(
             "loading embeddings from .safetensors requires the optional "
-            "development dependency: install voxcpmane2[development] or provide "
+            "development dependency: install voicenook[development] or provide "
             "embed_tokens.npy in the model directory"
         ) from exc
 
