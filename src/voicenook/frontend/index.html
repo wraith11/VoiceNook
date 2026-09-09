@@ -26,14 +26,14 @@
   .btn.danger{background:var(--err)}
   .btn.ok{background:var(--ok);color:#0b1210}
   .tag{display:inline-block;background:var(--panel2);border:1px solid var(--line);border-radius:5px;padding:.1rem .45rem;font-size:.72rem;margin:.15rem .1rem;color:var(--mut)}
-  .hibadge{display:inline-flex;align-items:center;gap:.25rem;color:var(--err);border:1px solid var(--err);border-radius:50%;padding:.05rem .45rem;font-size:.7rem;font-weight:700;cursor:default}
+  .hibadge{display:inline-flex;align-items:center;gap:.3rem;color:var(--err);font-size:.72rem;cursor:default}
+  .hibadge .xcircle{display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;border-radius:50%;border:1.5px solid var(--err);color:var(--err);font-size:.65rem;line-height:1}
   .libdesc{flex:1;min-width:140px}
-  /* Reftext-Dropdown: inline, ohne die Zeile zu vergroessern */
-  .refdrop{display:inline-block;position:relative}
-  .refdrop details{display:inline-block}
-  .refdrop summary{display:inline-flex;align-items:center;cursor:pointer;color:var(--acc);font-size:.72rem;list-style:none;gap:.2rem}
-  .refdrop summary::-webkit-details-marker{display:none}
-  .refdrop .reftxt{position:absolute;left:0;top:1.4em;z-index:40;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:.5rem .7rem;font-size:.78rem;color:var(--txt);max-width:320px;min-width:200px;white-space:normal;box-shadow:0 4px 16px rgba(0,0,0,.4)}
+  /* Reftext-Button ohne Rahmen; Klick vergroessert die Zeile (Block innerhalb der Card) */
+  .refdrop{display:inline-block;vertical-align:middle}
+  .refdrop .refbtn{background:none;border:none;color:var(--acc);cursor:pointer;font-size:.75rem;padding:0;text-decoration:underline;text-underline-offset:2px}
+  .refdrop .reftxt{display:none;margin-top:.35rem;padding:.45rem .6rem;background:var(--panel2);border:1px solid var(--line);border-radius:6px;font-size:.78rem;color:var(--txt);white-space:normal}
+  .refdrop.open .reftxt{display:block}
   #status{margin:.6rem 0;font-size:.88rem;min-height:1.2em}
   .voice{display:flex;justify-content:space-between;align-items:center;gap:.6rem;padding:.5rem .4rem;border-bottom:1px solid var(--line);flex-wrap:wrap}
   .voice:last-child{border-bottom:none}
