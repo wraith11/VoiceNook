@@ -204,11 +204,13 @@ def synthesize(body: dict):
 
 @app.get("/health")
 def health():
+    _touch_activity()
     return {
         "status": "healthy",
         "model_loaded": _model is not None,
         "voices": len(list_voices()),
         "sessions": list(_sessions.keys()),
+        "idle_timeout_seconds": IDLE_TIMEOUT_SECONDS,
     }
 
 
