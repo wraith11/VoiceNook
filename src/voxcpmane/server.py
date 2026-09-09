@@ -1291,38 +1291,8 @@ async def create_voice(request: CreateVoiceRequest):
         raise HTTPException(status_code=400, detail=f"Audio not found: {audio_path}")
 
     try:
-        os.makedirs(CUSTOM_VOICE_CACHE_DIR, exist_ok=True)
-        VOICE_FEATURE_CACHE_MEMORY.pop((name, "reference"), None)
-        VOICE_FEATURE_CACHE_MEMORY.pop((name, "prompt"), None)
-        for stale_suffix in (
-            ".embed.npy",
-            ".prompt.embed.npy",
-            ".prompt.cond.npy",
-            ".prompt.decode_context.npy",
-            ".npy",
-        ):
-            stale_path = os.path.join(CUSTOM_VOICE_CACHE_DIR, f"{name}{stale_suffix}")
-            if os.path.exists(stale_path):
-                os.unlink(stale_path)
-        VOICE_STORE.remove_lm_prefix_caches(name)
-
-        compile_voice_feature_cache_from_audio(name, audio_path)
-        txt_path = os.path.join(CUSTOM_VOICE_CACHE_DIR, f"{name}.txt")
-        if prompt_text_val:
-            compile_voice_feature_cache_from_audio(name, audio_path, prompt=True)
-            with open(txt_path, "w", encoding="utf-8") as f:
-                f.write(prompt_text_val)
-            mode = "reference_plus_continuation"
-        else:
-            if os.path.exists(txt_path):
-                os.unlink(txt_path)
-            mode = "reference"
-
-        return {
-            "status": "success",
-            "message": f"Voice '{name}' created.",
-            "mode": mode,
-        }
+        mode = _compile_custom_voice(name, audio_path, prompt_text_val)
+        return {"status": "success", "message": f"Voice '{name}' created.", "mode": mode}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed: {e}")
 
