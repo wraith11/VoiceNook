@@ -12,6 +12,7 @@ import argparse
 import io
 import os
 import re
+import threading
 import time
 import warnings
 import wave
@@ -27,6 +28,7 @@ warnings.filterwarnings("ignore")
 VOICE_DIR = os.path.expanduser("~/.cache/ane_tts")
 SR = 24000
 HOP = 960
+IDLE_TIMEOUT_SECONDS = 300  # Standard: 5 Minuten Inaktivitaet -> Auto-Stop
 
 app = FastAPI(title="VoiceNook Higgs TTS")
 app.add_middleware(
@@ -38,6 +40,22 @@ app.add_middleware(
 _model = None
 _sessions = {}
 _args = None
+_LAST_ACTIVITY = time.time()
+
+
+def _touch_activity():
+    """Wird bei jedem Request aufgerufen, um den Idle-Timer zurückzusetzen."""
+    global _LAST_ACTIVITY
+    _LAST_ACTIVITY = time.time()
+
+
+def _idle_watchdog():
+    """Beendet den Server, wenn länger als IDLE_TIMEOUT keine Anfrage kam."""
+    while True:
+        time.sleep(10)
+        if _model is not None and (time.time() - _LAST_ACTIVITY) > IDLE_TIMEOUT_SECONDS:
+            print(f"[*] Higgs inaktiv fuer >{IDLE_TIMEOUT_SECONDS}s - Auto-Stop.", flush=True)
+            os._exit(0)
 
 
 def list_voices():
@@ -116,6 +134,7 @@ def audio_float_to_int16(audio):
 
 @app.post("/api/synthesize/stream")
 def synthesize_stream(body: dict):
+    _touch_activity()
     text = (body.get("text") or "").strip()
     if not text:
         raise HTTPException(400, "Text leer")
@@ -151,6 +170,7 @@ def synthesize_stream(body: dict):
 
 @app.post("/api/synthesize")
 def synthesize(body: dict):
+    _touch_activity()
     text = (body.get("text") or "").strip()
     if not text:
         raise HTTPException(400, "Text leer")
@@ -184,11 +204,13 @@ def synthesize(body: dict):
 
 @app.get("/health")
 def health():
+    _touch_activity()
     return {
         "status": "healthy",
         "model_loaded": _model is not None,
         "voices": len(list_voices()),
         "sessions": list(_sessions.keys()),
+        "idle_timeout_seconds": IDLE_TIMEOUT_SECONDS,
     }
 
 
@@ -404,17 +426,22 @@ def _decode_codes(model, codes_np):
 
 
 def main():
-    global _args, VOICE_DIR
+    global _args, VOICE_DIR, IDLE_TIMEOUT_SECONDS
     p = argparse.ArgumentParser(description="VoiceNook Higgs Server (lazy)")
     p.add_argument("--model", default="whitelabel/mlx-q6-higgs-tts-3-4b")
     p.add_argument("--voice-dir", default=VOICE_DIR,
                    help="Geteilte Stimmen-Bibliothek (name.wav + name.txt)")
     p.add_argument("--host", default="127.0.0.1")
     p.add_argument("--port", type=int, default=8006)
+    p.add_argument("--idle-timeout", type=int, default=5,
+                   help="Auto-Stop nach N Minuten Inaktivitaet (Standard: 5).")
     _args = p.parse_args()
     VOICE_DIR = os.path.abspath(_args.voice_dir)
+    IDLE_TIMEOUT_SECONDS = max(1, int(_args.idle_timeout)) * 60
     print(f"[*] Higgs-Server (lazy) auf http://{_args.host}:{_args.port}", flush=True)
     print(f"[*] Stimmen-Bibliothek: {VOICE_DIR}", flush=True)
+    print(f"[*] Auto-Stop nach {IDLE_TIMEOUT_SECONDS}s Inaktivitaet", flush=True)
+    threading.Thread(target=_idle_watchdog, daemon=True).start()
     uvicorn.run(app, host=_args.host, port=_args.port, log_level="info")
 
 

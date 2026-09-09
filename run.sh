@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
-# VoiceNook — startet VoxCPM2-Server (WebUI, Port 8005) und Higgs-Server (Port 8006)
+# VoiceNook — startet den VoxCPM2-Server (WebUI, Port 8005).
+# Der Higgs-Server wird NICHT automatisch gestartet — er läuft on-demand
+# (per Klick auf den Higgs-Status im Higgs-Tab) und stoppt sich nach
+# Inaktivität selbst. So bleiben Ressourcen geschont.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -14,30 +17,8 @@ if [ ! -d "$VENV_DIR" ]; then
 fi
 source "$VENV_DIR/bin/activate"
 
-# VoxCPM2-Server (WebUI) im Hintergrund starten
 echo "==> Starte VoxCPM2-Server (WebUI) auf http://127.0.0.1:8005 ..."
-voxcpmane2-server --host 0.0.0.0 --port 8005 \
-    --lm-mode single-length --lm-prefill-chunk-size 64 &
-VOX_PID=$!
-
-# Higgs-Server starten (lädt lazy, Port 8006)
-echo "==> Starte Higgs-Server auf http://127.0.0.1:8006 ..."
-python -u higgs_server.py --port 8006 &
-HIGGS_PID=$!
-
-echo ""
-echo "VoiceNook läuft:"
-echo "  WebUI:  http://127.0.0.1:8005"
-echo "  Higgs:  http://127.0.0.1:8006"
-echo "  (Strg+C beendet beide)"
-
-cleanup() {
-    echo ""
-    echo "==> Beende Server ..."
-    kill "$VOX_PID" "$HIGGS_PID" 2>/dev/null || true
-    wait 2>/dev/null || true
-}
-trap cleanup EXIT INT TERM
-
-# Im Vordergrund laufen lassen
-wait
+echo "    Higgs startet on-demand aus der WebUI."
+exec voicenook-server --host 0.0.0.0 --port 8005 \
+    --lm-mode single-length --lm-prefill-chunk-size 64 \
+    "$@"
