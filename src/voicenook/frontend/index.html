@@ -357,10 +357,10 @@ function setHgStatus(state){
   else{$("hgStatusTxt").textContent=tr("hg_idle");el.title=tr("hg_start");}
 }
 function setVoxStatus(){
-  const el=$("voxStatus"),dot=$("voxDot");
+  const el=$("voxStatus");
   el.classList.toggle("on",voxLoaded);
-  $("voxStatusTxt").textContent=voxLoaded?(CFG.lang==="en"?"VoxCPM2 loaded":"VoxCPM2 geladen"):(CFG.lang==="en"?"VoxCPM2 idle":"VoxCPM2 inaktiv");
-  el.title=voxLoaded?(CFG.lang==="en"?"Unload":"Entladen"):(CFG.lang==="en"?"Load":"Laden");
+  $("voxStatusTxt").textContent=voxLoaded?tr("mdl_loaded_vox"):tr("mdl_idle_vox");
+  el.title=voxLoaded?tr("unload"):tr("load");
 }
 async function pollModels(){
   try{
