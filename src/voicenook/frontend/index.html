@@ -580,7 +580,7 @@ $("hgGenBtn").onclick=async()=>{
   }catch(e){if(e.name!=="AbortError")rstatus("hgResultMsg",tr("error",{msg:e.message}),false);else rstatus("hgResultMsg",tr("aborted"));}
   finally{btn.disabled=false;stopDots();}
 };
-$("hgStopBtn").onclick=()=>{if(abortCtrl)abortCtrl.abort();};
+$("hgStopBtn").onclick=()=>{stopPlayback(); if(abortCtrl)abortCtrl.abort();};
 $("hgDl").onclick=async()=>{
   if(!hg.wav)return; const fmt=$("hgFmt").value;
   try{ if(fmt==="wav")triggerDownload(hg.wav,"voice.wav"); else await convertDownload(hg.wav,"voice",fmt); rstatus("hgResultMsg",tr("dl_start")); }
