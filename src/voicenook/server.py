@@ -1451,7 +1451,7 @@ HIGGS_LOCK = threading.Lock()
 
 
 def _higgs_script_path() -> str:
-    # higgs_server.py liegt im Repo-Root: src/voxcpmane/server.py -> ../../../
+    # higgs_server liegt im Paket: src/voicenook/higgs_server.py
     candidates = [
         os.path.join(pathlib.Path(__file__).resolve().parent.parent.parent, "higgs_server.py"),
         os.path.join(os.getcwd(), "higgs_server.py"),
