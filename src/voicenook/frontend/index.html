@@ -28,6 +28,12 @@
   .tag{display:inline-block;background:var(--panel2);border:1px solid var(--line);border-radius:5px;padding:.1rem .45rem;font-size:.72rem;margin:.15rem .1rem;color:var(--mut)}
   .hibadge{display:inline-flex;align-items:center;gap:.25rem;color:var(--err);border:1px solid var(--err);border-radius:50%;padding:.05rem .45rem;font-size:.7rem;font-weight:700;cursor:default}
   .libdesc{flex:1;min-width:140px}
+  /* Reftext-Dropdown: inline, ohne die Zeile zu vergroessern */
+  .refdrop{display:inline-block;position:relative}
+  .refdrop details{display:inline-block}
+  .refdrop summary{display:inline-flex;align-items:center;cursor:pointer;color:var(--acc);font-size:.72rem;list-style:none;gap:.2rem}
+  .refdrop summary::-webkit-details-marker{display:none}
+  .refdrop .reftxt{position:absolute;left:0;top:1.4em;z-index:40;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:.5rem .7rem;font-size:.78rem;color:var(--txt);max-width:320px;min-width:200px;white-space:normal;box-shadow:0 4px 16px rgba(0,0,0,.4)}
   #status{margin:.6rem 0;font-size:.88rem;min-height:1.2em}
   .voice{display:flex;justify-content:space-between;align-items:center;gap:.6rem;padding:.5rem .4rem;border-bottom:1px solid var(--line);flex-wrap:wrap}
   .voice:last-child{border-bottom:none}
