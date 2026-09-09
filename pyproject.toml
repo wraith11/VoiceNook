@@ -40,7 +40,6 @@ Original = "https://github.com/0seba/VoxCPMANE"
 
 [project.scripts]
 voicenook-server = "voxcpmane.server:main"
-voxcpmane2-server = "voxcpmane.server:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/voxcpmane"]
