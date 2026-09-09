@@ -426,17 +426,22 @@ def _decode_codes(model, codes_np):
 
 
 def main():
-    global _args, VOICE_DIR
+    global _args, VOICE_DIR, IDLE_TIMEOUT_SECONDS
     p = argparse.ArgumentParser(description="VoiceNook Higgs Server (lazy)")
     p.add_argument("--model", default="whitelabel/mlx-q6-higgs-tts-3-4b")
     p.add_argument("--voice-dir", default=VOICE_DIR,
                    help="Geteilte Stimmen-Bibliothek (name.wav + name.txt)")
     p.add_argument("--host", default="127.0.0.1")
     p.add_argument("--port", type=int, default=8006)
+    p.add_argument("--idle-timeout", type=int, default=5,
+                   help="Auto-Stop nach N Minuten Inaktivitaet (Standard: 5).")
     _args = p.parse_args()
     VOICE_DIR = os.path.abspath(_args.voice_dir)
+    IDLE_TIMEOUT_SECONDS = max(1, int(_args.idle_timeout)) * 60
     print(f"[*] Higgs-Server (lazy) auf http://{_args.host}:{_args.port}", flush=True)
     print(f"[*] Stimmen-Bibliothek: {VOICE_DIR}", flush=True)
+    print(f"[*] Auto-Stop nach {IDLE_TIMEOUT_SECONDS}s Inaktivitaet", flush=True)
+    threading.Thread(target=_idle_watchdog, daemon=True).start()
     uvicorn.run(app, host=_args.host, port=_args.port, log_level="info")
 
 
