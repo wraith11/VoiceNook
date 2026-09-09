@@ -1,14 +1,15 @@
 #!/usr/bin/env bash
 # VoiceNook — Ein-Setup-Installation
-# Erstellt eine venv, installiert alle Abhängigkeiten (VoxCPM2 + Higgs) und ffmpeg.
+# Erstellt eine venv im Projektordner, installiert alle Abhängigkeiten
+# (VoxCPM2 + Higgs in-process) und ffmpeg.
 set -euo pipefail
 
 # Projekt-Verzeichnis (wo dieses Skript liegt)
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
-# Konfigurierbare Ziele
-VENV_DIR="${VENV_DIR:-$HOME/Persona/voicenook-venv}"
+# Standard-venv im Projektordner, per VENV_DIR ueberschreibbar
+VENV_DIR="${VENV_DIR:-$SCRIPT_DIR/.venv}"
 PYTHON_BIN="${PYTHON_BIN:-python3}"
 
 echo "==> VoiceNook Installation"
@@ -26,11 +27,11 @@ source "$VENV_DIR/bin/activate"
 echo "==> Aktualisiere pip ..."
 pip install --upgrade pip
 
-echo "==> Installiere VoiceNook (VoxCPM2-Runtime, editable) ..."
+echo "==> Installiere VoiceNook (editable) ..."
 pip install -e "$SCRIPT_DIR"
 
-echo "==> Installiere zusätzliche Abhängigkeiten (Upload/Convert, Higgs) ..."
-pip install pydub python-multipart mlx-audio
+echo "==> Installiere zusätzliche Abhängigkeiten (Upload/Convert) ..."
+pip install pydub python-multipart
 
 echo "==> Prüfe ffmpeg (für MP3-Konvertierung) ..."
 if command -v ffmpeg >/dev/null 2>&1; then
@@ -41,6 +42,6 @@ else
 fi
 
 echo ""
-echo "==> Fertig. Starte beide Server mit:"
+echo "==> Fertig. Starte mit:"
 echo "    ./run.sh"
-echo "    Danach im Browser: http://127.0.0.1:8005"
+echo "    Danach im Browser: http://127.0.0.1:8080"
