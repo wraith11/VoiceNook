@@ -4,10 +4,10 @@
 
 VoiceNook bündelt zwei TTS-Modelle in einem lokalen Server mit einer einzigen, zweisprachigen (de/en) Web-Oberfläche:
 
-- **VoxCPM2** — Voice Design aus einer Beschreibung (ohne Referenz), Voice Cloning (mit/ohne Reftext), Streaming, 48 kHz.
-- **Higgs v3** — Alternative Engine für Emotions-/Stil-Steuerung über Inline-Tags, lange Texte (Hörbuch-artig) via satzweisem Chunking.
+- **VoxCPM2** — Voice Design aus einer Beschreibung (ohne Referenz), Voice Cloning (mit/ohne Reftext).
+- **Higgs v3** — Alternative Engine für Emotions-/Stil-Steuerung über Inline-Tags, lange Texte via satzweisem Chunking.
 
-> Nur auf macOS mit Apple Silicon (M1/M2/M3/M4) getestet — entwickelt auf einem **M3 Ultra**.
+> Nur auf macOS mit Apple Silicon M3 getestet.
 
 ---
 
@@ -64,8 +64,7 @@ chmod +x install.sh run.sh
 ./run.sh
 ```
 
-- **WebUI:** http://127.0.0.1:8005
-- **Higgs-Server:** startet on-demand (nicht automatisch)
+- **WebUI:** http://127.0.0.1:8080
 
 `run.sh` startet **nur** den VoxCPM2-Server. Der Higgs-Server wird bei Bedarf von der WebUI aus gestartet (Klick auf den Higgs-Status im Higgs-Tab oder Generierungsanfrage) und stoppt sich nach Inaktivität selbst.
 
@@ -85,19 +84,12 @@ chmod +x install.sh run.sh
 **Beispiele:**
 ```bash
 # Englische UI, langsamere Defaults, Higgs deaktiviert
-voicenook-server --host 0.0.0.0 --port 8005 \
+voicenook-server --host 0.0.0.0 --port 8000 \
     --lang en --cfg-default 2.0 --steps-default 7 --no-higgs
 
 # Standard (deutsch, timesteps 20, Higgs on-demand)
 voicenook-server --host 0.0.0.0 --port 8005
 ```
-
-**Higgs-Server separat** (nur falls man ihn von Hand starten will):
-```bash
-python -u higgs_server.py --port 8006 --idle-timeout 5
-```
-`--idle-timeout` = Minuten Inaktivität bis zum Auto-Stop (Standard: 5).
-
 ---
 
 ## Verwendung
@@ -107,23 +99,8 @@ python -u higgs_server.py --port 8006 --idle-timeout 5
    - **Voice Design**: nur Beschreibung, keine Referenz → zufällige, aber beschreibungsgetragene Stimme.
    - **Clone (Reference + Beschreibung)**: gewählte Stimme + optionale Beschreibung.
    - **Clone (High similarity, ohne Beschreibung)**: maximale Treue zur Referenz.
-3. **Synthetisieren** → Button "Generate & play" streamt und spielt ab. Über das Dropdown neben dem Button auf **Generate only** umschalten (komplett generieren, dann Play drücken). Danach Download (WAV/MP3/…) oder **"Als Stimme speichern"** (verwendet den gecachten Text als Reftext).
+3. **Synthetisieren** → Button "Generate & play" streamt und spielt ab. Über das Dropdown neben dem Button auf **Generate only** umschalten (komplett generieren, dann Play drücken). Danach Download (WAV/MP3/…) oder **"Als Stimme speichern"**.
 4. **Higgs-Tab** → Stimme wählen, optional **Steuertokens** (Emotion/Stil/Prosodie/SFX) per Klick einfügen, lange Texte einfügen und synthetisieren. Der Higgs-Status oben zeigt, ob der Higgs-Server aktiv ist — ein Klick startet bzw. stoppt ihn.
-
----
-
-## Projektstruktur
-
-```
-VoiceNook/
-├── install.sh              # eine venv + alle Abhängigkeiten + ffmpeg
-├── run.sh                  # startet VoxCPM2-Server (Higgs on-demand)
-├── higgs_server.py         # eigenständiger Higgs-v3-Server (MLX, lazy, Auto-Stop)
-├── pyproject.toml
-└── src/voxcpmane/          # VoxCPM2-Runtime (Original, angepasst)
-    ├── server.py           # + Upload, Convert, Reftexts, Config, Higgs-Lifecycle
-    └── frontend/index.html # VoiceNook-WebUI (ersetzt das Original)
-```
 
 ---
 
@@ -138,4 +115,4 @@ VoiceNook/
 
 ---
 
-*Erstellt mit **Vibe Code**.*
+[![Vibe Coded](https://img.shields.io/badge/Vibe--Coded-100%25-purple?style=for-the-badge)]() 
