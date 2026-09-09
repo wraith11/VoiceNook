@@ -9,7 +9,7 @@ VoiceNook bündelt zwei TTS-Modelle in **einem** lokalen Prozess mit einer zweis
 
 Beide Modelle laufen **in-process** unter einem einzigen Port und laden **on-demand** — im Idle wird der RAM freigegeben.
 
-> Nur auf macOS mit Apple Silicon getestet (M3 Ultra).
+> Nur mit M3 Ultra getestet.
 
 ---
 
