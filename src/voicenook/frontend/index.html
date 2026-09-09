@@ -26,14 +26,14 @@
   .btn.danger{background:var(--err)}
   .btn.ok{background:var(--ok);color:#0b1210}
   .tag{display:inline-block;background:var(--panel2);border:1px solid var(--line);border-radius:5px;padding:.1rem .45rem;font-size:.72rem;margin:.15rem .1rem;color:var(--mut)}
-  .hibadge{display:inline-flex;align-items:center;gap:.25rem;color:var(--err);border:1px solid var(--err);border-radius:50%;padding:.05rem .45rem;font-size:.7rem;font-weight:700;cursor:default}
+  .hibadge{display:inline-flex;align-items:center;gap:.3rem;color:var(--err);font-size:.72rem;cursor:default}
+  .hibadge .xcircle{display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;border-radius:50%;border:1.5px solid var(--err);color:var(--err);font-size:.65rem;line-height:1}
   .libdesc{flex:1;min-width:140px}
-  /* Reftext-Dropdown: inline, ohne die Zeile zu vergroessern */
-  .refdrop{display:inline-block;position:relative}
-  .refdrop details{display:inline-block}
-  .refdrop summary{display:inline-flex;align-items:center;cursor:pointer;color:var(--acc);font-size:.72rem;list-style:none;gap:.2rem}
-  .refdrop summary::-webkit-details-marker{display:none}
-  .refdrop .reftxt{position:absolute;left:0;top:1.4em;z-index:40;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:.5rem .7rem;font-size:.78rem;color:var(--txt);max-width:320px;min-width:200px;white-space:normal;box-shadow:0 4px 16px rgba(0,0,0,.4)}
+  /* Reftext-Button ohne Rahmen; Klick vergroessert die Zeile (Block innerhalb der Card) */
+  .refdrop{display:inline-block;vertical-align:middle}
+  .refdrop .refbtn{background:none;border:none;color:var(--acc);cursor:pointer;font-size:.75rem;padding:0;text-decoration:underline;text-underline-offset:2px}
+  .refdrop .reftxt{display:none;margin-top:.35rem;padding:.45rem .6rem;background:var(--panel2);border:1px solid var(--line);border-radius:6px;font-size:.78rem;color:var(--txt);white-space:normal}
+  .refdrop.open .reftxt{display:block}
   #status{margin:.6rem 0;font-size:.88rem;min-height:1.2em}
   .voice{display:flex;justify-content:space-between;align-items:center;gap:.6rem;padding:.5rem .4rem;border-bottom:1px solid var(--line);flex-wrap:wrap}
   .voice:last-child{border-bottom:none}
@@ -70,7 +70,7 @@
   /* Higgs-Status */
   .hstatus{display:inline-flex;align-items:center;gap:.5rem;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:.35rem .7rem;font-size:.8rem;color:var(--mut);cursor:pointer;user-select:none}
   .hstatus:hover{border-color:var(--acc)}
-  .hstatus .dot{width:10px;height:10px;border-radius:50%;background:var(--err)}
+  .hstatus .dot{width:10px;height:10px;border-radius:50%;background:var(--warn,#e0a93a)}
   .hstatus.on .dot{background:var(--ok)}
   .hstatus .spin{width:10px;height:10px;border-radius:50%;border:2px solid var(--line);border-top-color:var(--acc);animation:spin 1s linear infinite;display:none}
   @keyframes spin{to{transform:rotate(360deg)}}
@@ -206,6 +206,7 @@
       <label data-i18n="testsentence">Testsatz für die Vorschau</label>
       <input type="text" id="testSentence" style="width:100%" value="Hallo, das ist ein Test meiner Stimme.">
       <div id="libList" style="margin-top:.4rem"><p class="hint">Lade…</p></div>
+      <div id="libMsg" style="font-size:.85rem;min-height:1.2em;margin-top:.4rem"></div>
     </div>
   </div>
 </div>
@@ -241,8 +242,8 @@ const T={
     testing:"Teste Stimme '{name}'…",dl_start:"Download gestartet.",download_err:"Fehler Download: {msg}",
     higgs_down:"Higgs-Server nicht erreichbar. Klick auf den Status startet ihn.",
     higgs_auto:"Higgs wurde automatisch gestartet. Der erste Lauf lädt das Modell und dauert etwas.",
-    mdl_loaded_vox:"VoxCPM2 geladen",mdl_idle_vox:"VoxCPM2 inaktiv",
-    mdl_loaded_higgs:"Higgs v3 geladen",mdl_idle_higgs:"Higgs v3 inaktiv",
+    mdl_loaded_vox:"VoxCPM2 geladen",mdl_idle_vox:"VoxCPM2 standby",
+    mdl_loaded_higgs:"Higgs v3 geladen",mdl_idle_higgs:"Higgs v3 standby",
     load:"Laden",unload:"Entladen",desc_hint:"Beschreibung (optional)",desc_saved:"Beschreibung für '{name}' gespeichert."},
   en:{tab_vox:"VoxCPM2",tab_higgs:"Higgs v3",tab_lib:"Voice Library",mode:"Mode",
     mode_design:"Voice Design (description only)",mode_ref:"Clone (Reference + description)",
@@ -262,8 +263,8 @@ const T={
     testing:"Testing voice '{name}'…",dl_start:"Download started.",download_err:"Download error: {msg}",
     higgs_down:"Higgs server unreachable. Click the status to start it.",
     higgs_auto:"Higgs started automatically. The first run loads the model and takes a moment.",
-    mdl_loaded_vox:"VoxCPM2 loaded",mdl_idle_vox:"VoxCPM2 idle",
-    mdl_loaded_higgs:"Higgs v3 loaded",mdl_idle_higgs:"Higgs v3 idle",
+    mdl_loaded_vox:"VoxCPM2 loaded",mdl_idle_vox:"VoxCPM2 standby",
+    mdl_loaded_higgs:"Higgs v3 loaded",mdl_idle_higgs:"Higgs v3 standby",
     load:"Load",unload:"Unload",desc_hint:"Description (optional)",desc_saved:"Description saved for '{name}'."}
 };
 function tr(key,params){
@@ -486,8 +487,8 @@ $("saveGenBtn").onclick=async()=>{
   fd.append("voice_name",name.trim()); fd.append("prompt_text",vox.cachedText); fd.append("file",vox.wav,name+".wav");
   try{const r=await fetch("/v1/voices/upload",{method:"POST",body:fd});const j=await r.json();
     if(!r.ok)throw new Error(j.detail||r.statusText);
-    status(tr("saved",{name,mode:j.mode})); loadVox(); loadHg(); loadLib();
-  }catch(e){status(tr("error",{msg:e.message}),false);}
+    rstatus("libMsg",tr("saved",{name,mode:j.mode})); loadVox(); loadHg(); loadLib();
+  }catch(e){rstatus("libMsg",tr("error",{msg:e.message}),false);}
 };
 
 /* ---------- HIGGS ---------- */
@@ -593,6 +594,8 @@ async function testVoice(name){
 }
 async function loadLib(){
   try{
+    // Sicherstellen, dass voicesHg (Higgs-Verfuegbarkeit) geladen ist
+    if(!voicesHg.length){ try{ await loadHg(); }catch(e){} }
     const j=await(await fetch("/voices")).json();
     const sys=j.system_voices||[], cus=j.custom_voices||[];
     const det=j.custom_voice_details||{}, desc=j.custom_voice_descriptions||{};
@@ -604,12 +607,11 @@ async function loadLib(){
       const d=document.createElement("div"); d.className="voice";
       // Higgs-Verfuegbarkeit: hat die Stimme eine .wav? (in voicesHg aus /higgs/api/voices)
       const hasHiggs = (voicesHg||[]).indexOf(n)!==-1;
-      const higgsBadge = hasHiggs?"":'<span class="hibadge" title="'+(CFG.lang==="en"?"Not available in Higgs":"Nicht für Higgs verfügbar")+'">✕ Higgs</span>';
+      const higgsBadge = hasHiggs?"":'<span class="hibadge" title="'+(CFG.lang==="en"?"Not available in Higgs":"Nicht für Higgs verfügbar")+'"><span class="xcircle">✕</span> Higgs</span>';
       const curDesc = esc(desc[n]||"");
       const ref = det[n]?esc(det[n]):"";
-      const refDrop = ref?'<span class="refdrop">'+
-        '<details><summary>'+(CFG.lang==="en"?"Ref":"Reftext")+'</summary>'+
-        '<div class="reftxt">'+ref+'</div></details></span>':"";
+      const refDrop = ref?'<span class="refdrop"><button class="refbtn" onclick="this.parentNode.classList.toggle(\'open\')">'+(CFG.lang==="en"?"Reftext":"Reftext")+' ▾</button>'+
+        '<div class="reftxt">'+ref+'</div></span>':"";
       d.innerHTML='<div style="display:flex;align-items:center;gap:.4rem"><strong>'+n+'</strong><span class="tag">Custom</span>'+higgsBadge+refDrop+'</div>'+
         '<div class="row" style="width:100%"><input type="text" class="libdesc" value="'+curDesc+'" placeholder="'+tr("desc_hint")+'">'+
         '<button class="btn sec" onclick="saveDesc(\''+n+'\',this.previousElementSibling.value)">'+(CFG.lang==="en"?"Save":"Speichern")+'</button>'+
@@ -630,15 +632,15 @@ async function saveDesc(name,desc){
     const r=await fetch("/v1/voices/"+encodeURIComponent(name)+"/description",{method:"POST",
       headers:{"Content-Type":"application/json"},body:JSON.stringify({description:desc||""})});
     if(!r.ok)throw new Error((await r.json()).detail||r.statusText);
-    status(tr("desc_saved",{name}));
-  }catch(e){status(tr("error",{msg:e.message}),false);}
+    rstatus("libMsg",tr("desc_saved",{name}));
+  }catch(e){rstatus("libMsg",tr("error",{msg:e.message}),false);}
 }
 async function delVoice(name){
   if(!confirm(CFG.lang==="en"?("Delete voice '"+name+"'?"):("Stimme '"+name+"' löschen?")))return;
   try{const r=await fetch("/v1/voices/"+encodeURIComponent(name),{method:"DELETE"});
     if(!r.ok)throw new Error((await r.json()).detail||r.statusText);
-    status(tr("deleted",{name})); loadVox(); loadHg(); loadLib();
-  }catch(e){status(tr("error",{msg:e.message}),false);}
+    rstatus("libMsg",tr("deleted",{name})); loadVox(); loadHg(); loadLib();
+  }catch(e){rstatus("libMsg",tr("error",{msg:e.message}),false);}
 }
 $("libCreateBtn").onclick=async()=>{
   const name=$("libName").value.trim(), file=$("libFile").files[0];
@@ -647,8 +649,8 @@ $("libCreateBtn").onclick=async()=>{
   fd.append("voice_name",name); fd.append("prompt_text",$("libReftext").value.trim()); fd.append("file",file);
   try{const r=await fetch("/v1/voices/upload",{method:"POST",body:fd});const j=await r.json();
     if(!r.ok)throw new Error(j.detail||r.statusText);
-    status(tr("created",{name,mode:j.mode})); loadVox(); loadHg(); loadLib();
-  }catch(e){status(tr("error",{msg:e.message}),false);}
+    rstatus("libMsg",tr("created",{name,mode:j.mode})); loadVox(); loadHg(); loadLib();
+  }catch(e){rstatus("libMsg",tr("error",{msg:e.message}),false);}
 };
 
 /* ---------- Init ---------- */
