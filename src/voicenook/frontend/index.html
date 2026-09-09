@@ -254,7 +254,10 @@ const T={
     no_audio:"No audio produced.",aborted:"Aborted.",name_req:"Please provide a name.",test_play:"Test played.",
     testing:"Testing voice '{name}'…",dl_start:"Download started.",download_err:"Download error: {msg}",
     higgs_down:"Higgs server unreachable. Click the status to start it.",
-    higgs_auto:"Higgs started automatically. The first run loads the model and takes a moment."}
+    higgs_auto:"Higgs started automatically. The first run loads the model and takes a moment.",
+    mdl_loaded_vox:"VoxCPM2 loaded",mdl_idle_vox:"VoxCPM2 idle",
+    mdl_loaded_higgs:"Higgs loaded",mdl_idle_higgs:"Higgs idle",
+    load:"Load",unload:"Unload",desc_hint:"Description (optional)"}
 };
 function tr(key,params){
   let s=(T[CFG.lang]||T.de)[key]||key;
