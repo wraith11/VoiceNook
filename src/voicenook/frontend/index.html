@@ -310,10 +310,17 @@ $("tabHiggs").onclick=()=>setTab("paneHiggs");
 $("tabLib").onclick=()=>setTab("paneLib");
 
 /* ---------- Audio ---------- */
+let activeSources=[];
 function getCtx(sr){
   if(!ctx||ctx.sampleRate!==sr){ctx=new(window.AudioContext||window.webkitAudioContext)({sampleRate:sr});nextT=0;}
   if(ctx.state==="suspended")ctx.resume();
   return ctx;
+}
+function stopPlayback(){
+  activeSources.forEach(s=>{try{s.stop();}catch(e){}});
+  activeSources=[];
+  nextT=0;
+  if(ctx){ try{ctx.close();}catch(e){} ctx=null; }
 }
 function playPCM16(ab,sr){
   const n=Math.floor(ab.byteLength/2); if(n<=0)return;
@@ -323,6 +330,7 @@ function playPCM16(ab,sr){
   if(nextT<now+0.12)nextT=now+0.12;
   const b=c.createBuffer(1,f32.length,c.sampleRate); b.copyToChannel(f32,0);
   const s=c.createBufferSource(); s.buffer=b; s.connect(c.destination); s.start(nextT);
+  activeSources.push(s);
   nextT+=f32.length/c.sampleRate;
 }
 function buildWav(parts,sr){
