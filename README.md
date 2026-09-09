@@ -111,22 +111,6 @@ voicenook-server --lm-mode preload --lm-prefill-chunk-size 64
 
 ---
 
-## Projektstruktur
-
-```
-VoiceNook/
-├── install.sh              # venv im Projektordner + alle Abhängigkeiten + ffmpeg
-├── run.sh                  # startet den Server (Port 8080)
-├── pyproject.toml
-└── src/voicenook/
-    ├── server.py           # Hauptserver (VoxCPM2 + Mount /higgs, Modell-Lifecycle)
-    ├── higgs_server.py     # Higgs-FastAPI-App (in-process, lazy, Unload)
-    ├── frontend/index.html # VoiceNook-WebUI
-    └── …                   # VoxCPM2-Runtime
-```
-
----
-
 ## Credits & Lizenzen
 
 - **VoxCPM / VoxCPM2** — [OpenBMB/VoxCPM](https://github.com/OpenBMB/VoxCPM) (Apache-2.0)
@@ -139,5 +123,4 @@ VoiceNook/
 
 ## Hinweis zur Entwicklung
 
-Dieses Projekt wurde vollständig mit **Vibe Code** entwickelt.
-Die KI generierte den Großteil des Codes; Review und Testing wurden manuell durchgeführt.
+Dieses Projekt wurde mittels Vibe Coding entwickelt. Die Codebasis wurde überwiegend KI-generiert und anschließend manuell geprüft und getestet.
