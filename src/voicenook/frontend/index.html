@@ -607,8 +607,6 @@ async function testVoice(name){
     rstatus("libMsg",tr("test_play"));
   }catch(e){rstatus("libMsg",tr("error",{msg:e.message}),false);}
 }
-async function loadLib(){
-  try{
 async function playVoiceWav(name){
   try{
     const r=await fetch("/v1/voices/"+encodeURIComponent(name)+"/wav");
