@@ -666,7 +666,7 @@ def load_voice_feature_cache(voice_name: str, *, prompt: bool = False) -> np.nda
             detail=(
                 f"Voice cache '{cache_name}' is not in the current feature-cache "
                 f"format. Expected (T, {generator.hidden_size}), got {embed.shape}. "
-                "Regenerate the voice cache with this VoxCPMANE2 version."
+                "Regenerate the voice cache with this VoiceNook version."
             ),
         )
     VOICE_FEATURE_CACHE_MEMORY[memory_key] = embed
