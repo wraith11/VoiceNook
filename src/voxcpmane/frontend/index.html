@@ -42,48 +42,72 @@
   .tags button{background:var(--panel2);color:#cfe0ff;border:1px solid var(--line);border-radius:6px;padding:.25rem .5rem;cursor:pointer;font-size:.72rem}
   .tags button:hover{background:#3a4670}
   details>summary{color:var(--mut);font-size:.8rem;cursor:pointer}
+  /* Generate & play / Generate only Split-Button */
+  .split{display:inline-flex;align-items:stretch;border-radius:8px;overflow:hidden}
+  .split .main{background:var(--acc);color:#fff;border:none;padding:.55rem 1rem;font-size:.95rem;cursor:pointer}
+  .split .caret{background:var(--acc);color:#fff;border:none;border-left:1px solid rgba(255,255,255,.35);padding:0 .5rem;cursor:pointer;font-size:.8rem}
+  .split select{display:none}
+  .dropmenu{position:absolute;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:.25rem;z-index:50;min-width:150px;box-shadow:0 4px 16px rgba(0,0,0,.4)}
+  .dropmenu button{display:block;width:100%;background:none;border:none;color:var(--txt);text-align:left;padding:.4rem .6rem;border-radius:6px;cursor:pointer;font-size:.85rem}
+  .dropmenu button:hover{background:var(--panel)}
+  .dropmenu button.on{color:var(--ok)}
+  .wrap{position:relative}
+  /* Higgs-Status */
+  .hstatus{display:inline-flex;align-items:center;gap:.5rem;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:.35rem .7rem;font-size:.8rem;color:var(--mut);cursor:pointer;user-select:none}
+  .hstatus:hover{border-color:var(--acc)}
+  .hstatus .dot{width:10px;height:10px;border-radius:50%;background:var(--err)}
+  .hstatus.on .dot{background:var(--ok)}
+  .hstatus .spin{width:10px;height:10px;border-radius:50%;border:2px solid var(--line);border-top-color:var(--acc);animation:spin 1s linear infinite;display:none}
+  @keyframes spin{to{transform:rotate(360deg)}}
 </style>
 </head>
 <body>
 <div class="wrap">
   <h1>🎙️ VoiceNook</h1>
-  <div class="tabs">
-    <button class="tab active" id="tabVox">VoxCPM2</button>
-    <button class="tab" id="tabHiggs">Higgs v3</button>
-    <button class="tab" id="tabLib">Stimmen-Bibliothek</button>
+  <div class="tabs" id="tabs">
+    <button class="tab active" id="tabVox" data-i18n="tab_vox">VoxCPM2</button>
+    <button class="tab" id="tabHiggs" data-i18n="tab_higgs">Higgs v3</button>
+    <button class="tab" id="tabLib" data-i18n="tab_lib">Stimmen-Bibliothek</button>
   </div>
   <div id="status"></div>
 
   <!-- ============ VOXCPM2 ============ -->
   <div class="pane active" id="paneVox">
     <div class="card">
-      <label>Modus</label>
+      <label data-i18n="mode">Modus</label>
       <select id="voxMode">
-        <option value="design">Voice Design (nur Beschreibung)</option>
-        <option value="ref">Clone (Reference + Beschreibung)</option>
-        <option value="high">Clone (High similarity, ohne Beschreibung)</option>
+        <option value="design" data-i18n="mode_design">Voice Design (nur Beschreibung)</option>
+        <option value="ref" data-i18n="mode_ref">Clone (Reference + Beschreibung)</option>
+        <option value="high" data-i18n="mode_high">Clone (High similarity, ohne Beschreibung)</option>
       </select>
-      <label>Stimmbeschreibung (Englisch)</label>
+      <label data-i18n="desc">Stimmbeschreibung (Englisch)</label>
       <textarea id="desc" rows="2" placeholder="A warm, calm male voice, slightly smiling, medium pace"></textarea>
-      <div id="voiceRow" style="display:none"><label>Stimme</label><select id="voiceSel"></select></div>
-      <label>Text</label>
+      <div id="voiceRow" style="display:none"><label data-i18n="voice">Stimme</label><select id="voiceSel"></select></div>
+      <label data-i18n="text">Text</label>
       <textarea id="text" rows="3" placeholder="Hallo und herzlich willkommen!"></textarea>
       <details style="margin-top:.6rem">
-        <summary>Erweitert</summary>
+        <summary data-i18n="advanced">Erweitert</summary>
         <div class="row" style="margin-top:.4rem">
-          <div class="g"><label>cfg_value</label><input type="number" id="cfg" value="2.0" step="0.1"></div>
-          <div class="g"><label>inference_timesteps</label><input type="number" id="steps" value="20"></div>
-          <div class="g"><label>Seed (leer = zufällig)</label><input type="text" id="seed" placeholder=""></div>
+          <div class="g"><label>cfg_value</label><input type="number" id="cfg" step="0.1"></div>
+          <div class="g"><label data-i18n="timesteps">inference_timesteps</label><input type="number" id="steps"></div>
+          <div class="g"><label data-i18n="seed">Seed (leer = zufällig)</label><input type="text" id="seed" placeholder=""></div>
         </div>
       </details>
       <div class="row" style="margin-top:.8rem">
-        <button class="btn" id="genBtn">Synthetisieren</button>
-        <button class="btn sec" id="stopBtn">Stopp</button>
+        <span class="split">
+          <button class="main" id="genBtn" data-i18n="gen_play">Generate &amp; play</button>
+          <button class="caret" id="genCaret">▾</button>
+          <div class="dropmenu" id="genMenu" style="display:none">
+            <button data-i18n="gen_play_opt" id="optPlay">Generate &amp; play</button>
+            <button data-i18n="gen_only_opt" id="optOnly">Generate only</button>
+          </div>
+        </span>
+        <button class="btn sec" id="stopBtn" data-i18n="stop">Stopp</button>
       </div>
       <div class="prog" id="prog"><div></div></div>
     </div>
     <div class="card">
-      <label>Ergebnis</label>
+      <label data-i18n="result">Ergebnis</label>
       <audio id="voxPlayer" controls style="width:100%"></audio>
       <div class="row" style="margin-top:.6rem">
         <select id="voxFmt" style="flex:0 0 150px">
@@ -94,8 +118,8 @@
           <option value="ogg">OGG</option>
           <option value="aac">AAC</option>
         </select>
-        <button class="btn sec" id="voxDl" disabled>Download</button>
-        <button class="btn ok" id="saveGenBtn" disabled>Als Stimme speichern</button>
+        <button class="btn sec" id="voxDl" disabled data-i18n="download">Download</button>
+        <button class="btn ok" id="saveGenBtn" disabled data-i18n="save_voice">Als Stimme speichern</button>
       </div>
     </div>
   </div>
@@ -103,28 +127,31 @@
   <!-- ============ HIGGS ============ -->
   <div class="pane" id="paneHiggs">
     <div class="card">
-      <label>Stimme</label>
+      <div class="row" style="justify-content:space-between">
+        <label data-i18n="voice" style="margin:0">Stimme</label>
+        <span class="hstatus" id="hgStatus"><span class="dot" id="hgDot"></span><span id="hgStatusTxt" data-i18n="hg_idle">Higgs inaktiv</span></span>
+      </div>
       <select id="hgVoice"></select>
-      <label>Steuertokens</label>
+      <label data-i18n="ctrltokens">Steuertokens</label>
       <div class="tags" id="hgTags"></div>
-      <label>Text</label>
+      <label data-i18n="text">Text</label>
       <textarea id="hgText" rows="8" placeholder="Text, der vorgelesen werden soll"></textarea>
       <details style="margin-top:.6rem">
-        <summary>Erweitert</summary>
+        <summary data-i18n="advanced">Erweitert</summary>
         <div class="row" style="margin-top:.4rem">
           <div class="g"><label>temperature</label><input type="number" id="hgTemp" value="0.8" step="0.05"></div>
-          <div class="g"><label>seam</label><input type="number" id="hgSeam" value="0.25" step="0.05"></div>
-          <div class="g"><label>Seed</label><input type="text" id="hgSeed" placeholder="0"></div>
+          <div class="g"><label data-i18n="seam">seam</label><input type="number" id="hgSeam" value="0.25" step="0.05"></div>
+          <div class="g"><label data-i18n="seed">Seed</label><input type="text" id="hgSeed" placeholder="0"></div>
         </div>
       </details>
       <div class="row" style="margin-top:.8rem">
-        <button class="btn" id="hgGenBtn">Synthetisieren</button>
-        <button class="btn sec" id="hgStopBtn">Stopp</button>
+        <button class="btn" id="hgGenBtn" data-i18n="gen_play">Generate &amp; play</button>
+        <button class="btn sec" id="hgStopBtn" data-i18n="stop">Stopp</button>
       </div>
       <div class="prog" id="hgProg"><div></div></div>
     </div>
     <div class="card">
-      <label>Ergebnis</label>
+      <label data-i18n="result">Ergebnis</label>
       <audio id="hgPlayer" controls style="width:100%"></audio>
       <div class="row" style="margin-top:.6rem">
         <select id="hgFmt" style="flex:0 0 150px">
@@ -132,7 +159,7 @@
           <option value="mp3">MP3</option>
           <option value="flac">FLAC</option>
         </select>
-        <button class="btn sec" id="hgDl" disabled>Download</button>
+        <button class="btn sec" id="hgDl" disabled data-i18n="download">Download</button>
       </div>
     </div>
   </div>
@@ -140,16 +167,16 @@
   <!-- ============ STIMMEN-BIBLIOTHEK ============ -->
   <div class="pane" id="paneLib">
     <div class="card">
-      <h3>Stimme erstellen</h3>
-      <div class="row"><div class="g"><label>Name</label><input type="text" id="libName" placeholder="z.B. meine_stimme"></div></div>
-      <label>Referenz-Text</label>
+      <h3 data-i18n="create_voice">Stimme erstellen</h3>
+      <div class="row"><div class="g"><label data-i18n="name">Name</label><input type="text" id="libName" placeholder="z.B. meine_stimme"></div></div>
+      <label data-i18n="reftext">Referenz-Text</label>
       <textarea id="libReftext" rows="3" placeholder="Transkript der Aufnahme"></textarea>
-      <div class="row" style="margin-top:.6rem"><div class="g"><label>Audiodatei (mp3/wav/flac…)</label><input type="file" id="libFile" accept="audio/*"></div></div>
-      <div class="row" style="margin-top:.6rem"><button class="btn ok" id="libCreateBtn">Stimme erstellen</button></div>
+      <div class="row" style="margin-top:.6rem"><div class="g"><label data-i18n="audiofile">Audiodatei (mp3/wav/flac…)</label><input type="file" id="libFile" accept="audio/*"></div></div>
+      <div class="row" style="margin-top:.6rem"><button class="btn ok" id="libCreateBtn" data-i18n="create_voice">Stimme erstellen</button></div>
     </div>
     <div class="card">
-      <h3>Vorhandene Stimmen</h3>
-      <label>Testsatz für die Vorschau</label>
+      <h3 data-i18n="existing">Vorhandene Stimmen</h3>
+      <label data-i18n="testsentence">Testsatz für die Vorschau</label>
       <input type="text" id="testSentence" value="Hallo, das ist ein Test meiner Stimme.">
       <div id="libList" style="margin-top:.4rem"><p class="hint">Lade…</p></div>
     </div>
@@ -159,25 +186,85 @@
 <script>
 "use strict";
 const $=id=>document.getElementById(id);
-const HIGGS_URL="http://127.0.0.1:8006";
+let HIGGS_URL="http://127.0.0.1:8006";
+let CFG={lang:"de",cfg_default:2.0,steps_default:20,higgs_enabled:true,higgs_url:HIGGS_URL};
+let genMode="play";   // "play" = Generate & play, "only" = Generate only
 let abortCtrl=null;
 let ctx=null, nextT=0;
 let vox={parts:[],rate:48000,wav:null,cachedText:""};
 let hg={parts:[],rate:24000,wav:null};
+let hgRunning=false;
 
+/* ---------- i18n ---------- */
+const T={
+  de:{tab_vox:"VoxCPM2",tab_higgs:"Higgs v3",tab_lib:"Stimmen-Bibliothek",mode:"Modus",
+    mode_design:"Voice Design (nur Beschreibung)",mode_ref:"Clone (Reference + Beschreibung)",
+    mode_high:"Clone (High similarity, ohne Beschreibung)",desc:"Stimmbeschreibung (Englisch)",
+    voice:"Stimme",text:"Text",advanced:"Erweitert",timesteps:"inference_timesteps",
+    seed:"Seed (leer = zufällig)",gen_play:"Generate & play",gen_play_opt:"Generate & play",
+    gen_only_opt:"Generate only",stop:"Stopp",result:"Ergebnis",download:"Download",
+    save_voice:"Als Stimme speichern",ctrltokens:"Steuertokens",seam:"seam",
+    create_voice:"Stimme erstellen",name:"Name",reftext:"Referenz-Text",
+    audiofile:"Audiodatei (mp3/wav/flac…)",existing:"Vorhandene Stimmen",testsentence:"Testsatz für die Vorschau",
+    hg_idle:"Higgs inaktiv",hg_loading:"Higgs lädt…",hg_active:"Higgs aktiv",hg_start:"Higgs starten",
+    hg_stop:"Higgs stoppen",hg_disabled:"Higgs deaktiviert",gen_ttfb:"TTFB {ms} ms",
+    gen_done:"Fertig — {s} s. TTFB {ms} ms.",gen_only_done:"Fertig — {s} s. Zum Abspielen Play drücken.",
+    error:"Fehler: {msg}",saved:"Stimme '{name}' gespeichert ({mode})",deleted:"Stimme '{name}' gelöscht.",
+    created:"Stimme '{name}' erstellt ({mode})",choose_voice:"Bitte eine Stimme wählen.",enter_text:"Bitte Text eingeben.",
+    no_audio:"Kein Audio erzeugt.",aborted:"Abgebrochen.",name_req:"Name angeben.",test_play:"Test abgespielt.",
+    testing:"Teste Stimme '{name}'…",dl_start:"Download gestartet.",download_err:"Fehler Download: {msg}",
+    higgs_down:"Higgs-Server nicht erreichbar. Klick auf den Status startet ihn.",
+    higgs_auto:"Higgs wurde automatisch gestartet. Der erste Lauf lädt das Modell und dauert etwas."},
+  en:{tab_vox:"VoxCPM2",tab_higgs:"Higgs v3",tab_lib:"Voice Library",mode:"Mode",
+    mode_design:"Voice Design (description only)",mode_ref:"Clone (Reference + description)",
+    mode_high:"Clone (High similarity, no description)",desc:"Voice description (English)",
+    voice:"Voice",text:"Text",advanced:"Advanced",timesteps:"inference_timesteps",
+    seed:"Seed (empty = random)",gen_play:"Generate & play",gen_play_opt:"Generate & play",
+    gen_only_opt:"Generate only",stop:"Stop",result:"Result",download:"Download",
+    save_voice:"Save as voice",ctrltokens:"Control tokens",seam:"seam",
+    create_voice:"Create voice",name:"Name",reftext:"Reference text",
+    audiofile:"Audio file (mp3/wav/flac…)",existing:"Existing voices",testsentence:"Test sentence for preview",
+    hg_idle:"Higgs inactive",hg_loading:"Higgs loading…",hg_active:"Higgs active",hg_start:"Start Higgs",
+    hg_stop:"Stop Higgs",hg_disabled:"Higgs disabled",gen_ttfb:"TTFB {ms} ms",
+    gen_done:"Done — {s} s. TTFB {ms} ms.",gen_only_done:"Done — {s} s. Press play to listen.",
+    error:"Error: {msg}",saved:"Voice '{name}' saved ({mode})",deleted:"Voice '{name}' deleted.",
+    created:"Voice '{name}' created ({mode})",choose_voice:"Please choose a voice.",enter_text:"Please enter text.",
+    no_audio:"No audio produced.",aborted:"Aborted.",name_req:"Please provide a name.",test_play:"Test played.",
+    testing:"Testing voice '{name}'…",dl_start:"Download started.",download_err:"Download error: {msg}",
+    higgs_down:"Higgs server unreachable. Click the status to start it.",
+    higgs_auto:"Higgs started automatically. The first run loads the model and takes a moment."}
+};
+function tr(key,params){
+  let s=(T[CFG.lang]||T.de)[key]||key;
+  if(params) for(const k in params) s=s.replace("{"+k+"}",params[k]);
+  return s;
+}
+function applyI18n(){
+  document.querySelectorAll("[data-i18n]").forEach(el=>{
+    const k=el.getAttribute("data-i18n");
+    if(k) el.textContent=tr(k);
+  });
+  document.title=CFG.lang==="en"?"VoiceNook":"VoiceNook";
+  document.documentElement.lang=CFG.lang;
+}
+
+/* ---------- Status ---------- */
 function status(msg,ok=true){ $("status").textContent=msg; $("status").style.color=ok?"var(--txt)":"var(--err)"; }
 function progress(el,p){ el.style.display=p>=0?"block":"none"; if(p>=0)el.firstElementChild.style.width=p+"%"; }
 function esc(s){return s.replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
 
+/* ---------- Tabs ---------- */
 function setTab(w){
   [["tabVox","paneVox"],["tabHiggs","paneHiggs"],["tabLib","paneLib"]].forEach(([t,p])=>{
     $(t).classList.toggle("active",w===p); $(p).classList.toggle("active",w===p);
   });
+  if(w==="paneHiggs") pollHiggs(true);
 }
 $("tabVox").onclick=()=>setTab("paneVox");
 $("tabHiggs").onclick=()=>setTab("paneHiggs");
 $("tabLib").onclick=()=>setTab("paneLib");
 
+/* ---------- Audio ---------- */
 function getCtx(sr){
   if(!ctx||ctx.sampleRate!==sr){ctx=new(window.AudioContext||window.webkitAudioContext)({sampleRate:sr});nextT=0;}
   if(ctx.state==="suspended")ctx.resume();
@@ -216,7 +303,43 @@ async function convertDownload(wavBlob,base,fmt){
   triggerDownload(await r.blob(), base+"."+fmt);
 }
 
-/* ============ VOXCPM2 ============ */
+/* ---------- Generate & play / Generate only Dropdown ---------- */
+const genMenu=$("genMenu");
+$("genCaret").onclick=(e)=>{e.stopPropagation();genMenu.style.display=genMenu.style.display==="none"?"block":"none";};
+document.addEventListener("click",()=>{genMenu.style.display="none";});
+$("optPlay").onclick=()=>{genMode="play";updateGenBtn();genMenu.style.display="none";};
+$("optOnly").onclick=()=>{genMode="only";updateGenBtn();genMenu.style.display="none";};
+function updateGenBtn(){
+  $("genBtn").textContent=tr(genMode==="play"?"gen_play":"gen_only_opt");
+  $("optPlay").classList.toggle("on",genMode==="play");
+  $("optOnly").classList.toggle("on",genMode==="only");
+}
+
+/* ---------- Higgs Status ---------- */
+function setHgStatus(state){
+  const el=$("hgStatus"),dot=$("hgDot"),spin=$("hgStatus").querySelector(".spin");
+  el.classList.remove("on");
+  if(state==="active"){el.classList.add("on");$("hgStatusTxt").textContent=tr("hg_active");el.title=tr("hg_stop");}
+  else if(state==="loading"){$("hgStatusTxt").textContent=tr("hg_loading");el.title="";}
+  else if(state==="disabled"){$("hgStatusTxt").textContent=tr("hg_disabled");el.title="";}
+  else{$("hgStatusTxt").textContent=tr("hg_idle");el.title=tr("hg_start");}
+}
+async function pollHiggs(startIfInactive){
+  if(!CFG.higgs_enabled){setHgStatus("disabled");return;}
+  try{
+    const j=await(await fetch("/api/higgs/status")).json();
+    hgRunning=!!j.running;
+    setHgStatus(hgRunning?"active":"idle");
+    if(!hgRunning&&startIfInactive){ setHgStatus("loading"); await fetch("/api/higgs/start",{method:"POST"}); pollHiggs(false); }
+  }catch(e){ setHgStatus("idle"); }
+}
+$("hgStatus").onclick=async()=>{
+  if(!CFG.higgs_enabled)return;
+  if(hgRunning){ await fetch("/api/higgs/stop",{method:"POST"}); hgRunning=false; setHgStatus("idle"); }
+  else { setHgStatus("loading"); await fetch("/api/higgs/start",{method:"POST"}); pollHiggs(false); }
+};
+
+/* ---------- VOXCPM2 ---------- */
 let voicesVox={system:[],custom:[],details:{}};
 async function loadVox(){
   try{
@@ -225,15 +348,15 @@ async function loadVox(){
     const sel=$("voiceSel"),cur=sel.value; sel.innerHTML="";
     [...voicesVox.custom,...voicesVox.system].forEach(n=>{const o=document.createElement("option");o.value=n;o.textContent=n;sel.appendChild(o);});
     if(cur&&[...voicesVox.custom,...voicesVox.system].includes(cur))sel.value=cur;
-  }catch(e){status("Fehler VoxCPM2: "+e.message,false);}
+  }catch(e){status(tr("error",{msg:e.message}),false);}
 }
 function voxModeChanged(){
   const m=$("voxMode").value;
   $("voiceRow").style.display=(m==="design")?"none":"block";
   const isHigh=(m==="high");
   $("desc").disabled=isHigh; $("desc").style.opacity=isHigh?0.4:1;
-  $("desc").placeholder=isHigh?"(im High-similarity-Modus nicht verfügbar)"
-                              :"A warm, calm male voice, slightly smiling, medium pace";
+  $("desc").placeholder=isHigh?(CFG.lang==="en"?"(not available in High similarity mode)":"(im High-similarity-Modus nicht verfügbar)")
+    :"A warm, calm male voice, slightly smiling, medium pace";
 }
 $("voxMode").onchange=voxModeChanged; voxModeChanged();
 function voxPayload(){
@@ -246,48 +369,60 @@ function voxPayload(){
   return p;
 }
 $("genBtn").onclick=async()=>{
-  if(!$("text").value.trim()){status("Bitte Text eingeben.",false);return;}
+  if(!$("text").value.trim()){status(tr("enter_text"),false);return;}
   const m=$("voxMode").value;
-  if(m!=="design"&&!$("voiceSel").value){status("Bitte eine Stimme wählen.",false);return;}
+  if(m!=="design"&&!$("voiceSel").value){status(tr("choose_voice"),false);return;}
   const btn=$("genBtn"); btn.disabled=true;
   vox={parts:[],rate:48000,wav:null,cachedText:$("text").value};
   $("voxPlayer").src=""; $("voxDl").disabled=true; $("saveGenBtn").disabled=true;
   progress($("prog"),0); const t0=performance.now(); let ttfb=null;
   abortCtrl=new AbortController();
   try{
-    const r=await fetch("/v1/audio/speech/stream",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(voxPayload()),signal:abortCtrl.signal});
+    // generate only: nicht-streamende WAV abrufen; generate & play: streamen
+    const url = genMode==="only" ? "/v1/audio/speech" : "/v1/audio/speech/stream";
+    const r=await fetch(url,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(voxPayload()),signal:abortCtrl.signal});
     if(!r.ok){let m=r.statusText;try{m=(await r.json()).detail||m;}catch(e){}throw new Error(m);}
     const sr=Number(r.headers.get("X-Sample-Rate"))||48000; vox.rate=sr;
-    const rd=r.body.getReader();
-    while(true){const{done,value}=await rd.read();if(done)break;
-      if(value&&value.byteLength){if(ttfb===null){ttfb=Math.round(performance.now()-t0);status("TTFB "+ttfb+" ms");}playPCM16(value,sr);vox.parts.push(value);}}
-    if(vox.parts.length){ vox.wav=buildWav(vox.parts,sr);
+    if(genMode==="only"){
+      const ab=await r.arrayBuffer();
+      // WAV-Datei (vom Server) direkt nutzen
+      vox.wav=new Blob([ab],{type:"audio/wav"});
+      vox.parts=[ab];
       $("voxPlayer").src=URL.createObjectURL(vox.wav);
       $("voxDl").disabled=false; $("saveGenBtn").disabled=false;
-      status("Fertig — "+Math.round(vox.parts.reduce((s,a)=>s+a.byteLength,0)/2/sr)+" s. TTFB "+ttfb+" ms.");
-    } else status("Kein Audio.",false);
+      status(tr("gen_only_done",{s:Math.round(ab.byteLength/2/sr)}));
+    } else {
+      const rd=r.body.getReader();
+      while(true){const{done,value}=await rd.read();if(done)break;
+        if(value&&value.byteLength){if(ttfb===null){ttfb=Math.round(performance.now()-t0);status(tr("gen_ttfb",{ms:ttfb}));}playPCM16(value,sr);vox.parts.push(value);}}
+      if(vox.parts.length){ vox.wav=buildWav(vox.parts,sr);
+        $("voxPlayer").src=URL.createObjectURL(vox.wav);
+        $("voxDl").disabled=false; $("saveGenBtn").disabled=false;
+        status(tr("gen_done",{s:Math.round(vox.parts.reduce((s,a)=>s+a.byteLength,0)/2/sr),ms:ttfb}));
+      } else status(tr("no_audio"),false);
+    }
     progress($("prog"),100);
-  }catch(e){if(e.name!=="AbortError")status("Fehler: "+e.message,false);else status("Abgebrochen.");}
+  }catch(e){if(e.name!=="AbortError")status(tr("error",{msg:e.message}),false);else status(tr("aborted"));}
   finally{btn.disabled=false;progress($("prog"),-1);}
 };
 $("stopBtn").onclick=()=>{if(abortCtrl)abortCtrl.abort();};
 $("voxDl").onclick=async()=>{
   if(!vox.wav)return; const fmt=$("voxFmt").value;
-  try{ if(fmt==="wav")triggerDownload(vox.wav,"stimme.wav"); else await convertDownload(vox.wav,"stimme",fmt); status("Download gestartet."); }
-  catch(e){status("Fehler Download: "+e.message,false);}
+  try{ if(fmt==="wav")triggerDownload(vox.wav,"stimme.wav"); else await convertDownload(vox.wav,"stimme",fmt); status(tr("dl_start")); }
+  catch(e){status(tr("download_err",{msg:e.message}),false);}
 };
 $("saveGenBtn").onclick=async()=>{
-  if(!vox.wav){status("Erst synthetisieren.",false);return;}
-  const name=prompt("Name der Stimme:"); if(!name||!name.trim())return;
+  if(!vox.wav){status(tr("error",{msg:"no wav"}),false);return;}
+  const name=prompt(CFG.lang==="en"?"Voice name:":"Name der Stimme:"); if(!name||!name.trim())return;
   const fd=new FormData();
   fd.append("voice_name",name.trim()); fd.append("prompt_text",vox.cachedText); fd.append("file",vox.wav,name+".wav");
   try{const r=await fetch("/v1/voices/upload",{method:"POST",body:fd});const j=await r.json();
     if(!r.ok)throw new Error(j.detail||r.statusText);
-    status("Stimme '"+name+"' gespeichert ("+j.mode+")"); loadVox(); loadLib(); loadHg();
-  }catch(e){status("Fehler Speichern: "+e.message,false);}
+    status(tr("saved",{name,mode:j.mode})); loadVox(); loadLib(); loadHg();
+  }catch(e){status(tr("error",{msg:e.message}),false);}
 };
 
-/* ============ HIGGS ============ */
+/* ---------- HIGGS ---------- */
 const HIGHS_TAGS=[
   ["Emotion",["elation","amusement","enthusiasm","determination","pride","contentment","affection","relief","contemplation","confusion","surprise","awe","longing","arousal","anger","fear","disgust","bitterness","sadness","shame","helplessness"],"emotion"],
   ["Stil",["singing","shouting","whispering"],"style"],
@@ -319,10 +454,25 @@ async function loadHg(){
     if(cur&&voicesHg.includes(cur))sel.value=cur;
   }catch(e){}
 }
+async function ensureHiggs(){
+  if(!CFG.higgs_enabled)return false;
+  if(!hgRunning){
+    setHgStatus("loading");
+    try{await fetch("/api/higgs/start",{method:"POST"});}catch(e){}
+    // warten bis Higgs bereit ist
+    for(let i=0;i<30;i++){ await new Promise(r=>setTimeout(r,1000));
+      try{const j=await(await fetch(HIGGS_URL+"/health")).json(); if(j.status==="healthy"){hgRunning=true;setHgStatus("active");return true;} }catch(e){}
+    }
+    setHgStatus("idle"); return false;
+  }
+  return true;
+}
 $("hgGenBtn").onclick=async()=>{
-  if(!$("hgText").value.trim()){status("Bitte Text eingeben.",false);return;}
-  const v=$("hgVoice").value; if(!v){status("Bitte eine Stimme wählen.",false);return;}
+  if(!$("hgText").value.trim()){status(tr("enter_text"),false);return;}
+  const v=$("hgVoice").value; if(!v){status(tr("choose_voice"),false);return;}
   const btn=$("hgGenBtn"); btn.disabled=true;
+  status(tr("higgs_auto"));
+  if(!(await ensureHiggs())){status(tr("higgs_down"),false);btn.disabled=false;return;}
   hg={parts:[],rate:24000,wav:null};
   $("hgPlayer").src=""; $("hgDl").disabled=true;
   progress($("hgProg"),0); const t0=performance.now(); let ttfb=null;
@@ -330,82 +480,105 @@ $("hgGenBtn").onclick=async()=>{
   const p={voice:v,text:$("hgText").value,temperature:+$("hgTemp").value,seam_frames:+$("hgSeam").value};
   const seed=$("hgSeed").value.trim(); if(seed!=="")p.seed=+seed;
   try{
-    const r=await fetch(HIGGS_URL+"/api/synthesize/stream",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(p),signal:abortCtrl.signal});
+    const url = genMode==="only" ? "/api/synthesize" : "/api/synthesize/stream";
+    const r=await fetch(HIGGS_URL+url,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(p),signal:abortCtrl.signal});
     if(!r.ok){let m=r.statusText;try{m=(await r.json()).detail||m;}catch(e){}throw new Error(m);}
     const sr=Number(r.headers.get("X-Sample-Rate"))||24000; hg.rate=sr;
-    const rd=r.body.getReader();
-    while(true){const{done,value}=await rd.read();if(done)break;
-      if(value&&value.byteLength){if(ttfb===null){ttfb=Math.round(performance.now()-t0);status("TTFB "+ttfb+" ms");}playPCM16(value,sr);hg.parts.push(value);}}
-    if(hg.parts.length){ hg.wav=buildWav(hg.parts,sr);
+    if(genMode==="only"){
+      const ab=await r.arrayBuffer();
+      hg.wav=new Blob([ab],{type:"audio/wav"}); hg.parts=[ab];
       $("hgPlayer").src=URL.createObjectURL(hg.wav); $("hgDl").disabled=false;
-      status("Fertig — "+Math.round(hg.parts.reduce((s,a)=>s+a.byteLength,0)/2/sr)+" s. TTFB "+ttfb+" ms.");
-    } else status("Kein Audio.",false);
+      status(tr("gen_only_done",{s:Math.round(ab.byteLength/2/sr)}));
+    } else {
+      const rd=r.body.getReader();
+      while(true){const{done,value}=await rd.read();if(done)break;
+        if(value&&value.byteLength){if(ttfb===null){ttfb=Math.round(performance.now()-t0);status(tr("gen_ttfb",{ms:ttfb}));}playPCM16(value,sr);hg.parts.push(value);}}
+      if(hg.parts.length){ hg.wav=buildWav(hg.parts,sr);
+        $("hgPlayer").src=URL.createObjectURL(hg.wav); $("hgDl").disabled=false;
+        status(tr("gen_done",{s:Math.round(hg.parts.reduce((s,a)=>s+a.byteLength,0)/2/sr),ms:ttfb}));
+      } else status(tr("no_audio"),false);
+    }
     progress($("hgProg"),100);
-  }catch(e){if(e.name!=="AbortError")status("Fehler: "+e.message,false);else status("Higgs evtl. nicht erreichbar ("+HIGGS_URL+").");}
+  }catch(e){if(e.name!=="AbortError")status(tr("error",{msg:e.message}),false);else status(tr("aborted"));}
   finally{btn.disabled=false;progress($("hgProg"),-1);}
 };
 $("hgStopBtn").onclick=()=>{if(abortCtrl)abortCtrl.abort();};
 $("hgDl").onclick=async()=>{
   if(!hg.wav)return; const fmt=$("hgFmt").value;
-  try{ if(fmt==="wav")triggerDownload(hg.wav,"higgs.wav"); else await convertDownload(hg.wav,"higgs",fmt); status("Download gestartet."); }
-  catch(e){status("Fehler Download: "+e.message,false);}
+  try{ if(fmt==="wav")triggerDownload(hg.wav,"higgs.wav"); else await convertDownload(hg.wav,"higgs",fmt); status(tr("dl_start")); }
+  catch(e){status(tr("download_err",{msg:e.message}),false);}
 };
 
-/* ============ STIMMEN-BIBLIOTHEK ============ */
+/* ---------- STIMMEN-BIBLIOTHEK ---------- */
 async function testVoice(name){
   const p={model:"voxcpm2",input:$("testSentence").value||"Hallo.",voice:name,voice_mode:"reference",response_format:"wav"};
-  status("Teste Stimme '"+name+"'…");
+  status(tr("testing",{name}));
   try{
     const r=await fetch("/v1/audio/speech/stream",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(p)});
     if(!r.ok){let m=r.statusText;try{m=(await r.json()).detail||m;}catch(e){}throw new Error(m);}
     const sr=Number(r.headers.get("X-Sample-Rate"))||48000;
     const rd=r.body.getReader();
     while(true){const{done,value}=await rd.read();if(done)break; if(value&&value.byteLength)playPCM16(value,sr);}
-    status("Test abgespielt.");
-  }catch(e){status("Fehler: "+e.message,false);}
+    status(tr("test_play"));
+  }catch(e){status(tr("error",{msg:e.message}),false);}
 }
 async function loadLib(){
   try{
     const j=await(await fetch("/voices")).json();
     const sys=j.system_voices||[], cus=j.custom_voices||[], det=j.custom_voice_details||{};
     const el=$("libList");
-    if(!sys.length&&!cus.length){el.innerHTML='<p class="hint">Keine Stimmen vorhanden.</p>';return;}
+    if(!sys.length&&!cus.length){el.innerHTML='<p class="hint">'+(CFG.lang==="en"?"No voices yet.":"Keine Stimmen vorhanden.")+'</p>';return;}
     el.innerHTML="";
     sys.forEach(n=>{
       const d=document.createElement("div"); d.className="voice";
       d.innerHTML='<div><strong>'+n+'</strong> <span class="tag">System</span></div>'+
-        '<button class="btn sec" onclick="testVoice(\''+n+'\')">Testen</button>';
+        '<button class="btn sec" onclick="testVoice(\''+n+'\')">'+(CFG.lang==="en"?"Test":"Testen")+'</button>';
       el.appendChild(d);
     });
     cus.forEach(n=>{
       const d=document.createElement("div"); d.className="voice";
       const rt=det[n]?"<div class='meta'>Reftext: "+esc(det[n])+"</div>":"";
       d.innerHTML='<div><strong>'+n+'</strong> <span class="tag">Custom</span>'+rt+'</div>'+
-        '<button class="btn sec" onclick="testVoice(\''+n+'\')">Testen</button>'+
-        '<button class="btn danger" onclick="delVoice(\''+n+'\')">Löschen</button>';
+        '<button class="btn sec" onclick="testVoice(\''+n+'\')">'+(CFG.lang==="en"?"Test":"Testen")+'</button>'+
+        '<button class="btn danger" onclick="delVoice(\''+n+'\')">'+(CFG.lang==="en"?"Delete":"Löschen")+'</button>';
       el.appendChild(d);
     });
-  }catch(e){status("Fehler Bibliothek: "+e.message,false);}
+  }catch(e){status(tr("error",{msg:e.message}),false);}
 }
 async function delVoice(name){
-  if(!confirm("Stimme '"+name+"' löschen?"))return;
+  if(!confirm(CFG.lang==="en"?("Delete voice '"+name+"'?"):("Stimme '"+name+"' löschen?")))return;
   try{const r=await fetch("/v1/voices/"+encodeURIComponent(name),{method:"DELETE"});
     if(!r.ok)throw new Error((await r.json()).detail||r.statusText);
-    status("Stimme '"+name+"' gelöscht."); loadVox(); loadLib(); loadHg();
-  }catch(e){status("Fehler Löschen: "+e.message,false);}
+    status(tr("deleted",{name})); loadVox(); loadLib(); loadHg();
+  }catch(e){status(tr("error",{msg:e.message}),false);}
 }
 $("libCreateBtn").onclick=async()=>{
   const name=$("libName").value.trim(), file=$("libFile").files[0];
-  if(!name||!file){status("Name + Datei angeben.",false);return;}
+  if(!name||!file){status(tr("name_req"),false);return;}
   const fd=new FormData();
   fd.append("voice_name",name); fd.append("prompt_text",$("libReftext").value.trim()); fd.append("file",file);
   try{const r=await fetch("/v1/voices/upload",{method:"POST",body:fd});const j=await r.json();
     if(!r.ok)throw new Error(j.detail||r.statusText);
-    status("Stimme '"+name+"' erstellt ("+j.mode+")"); loadVox(); loadLib(); loadHg();
-  }catch(e){status("Fehler: "+e.message,false);}
+    status(tr("created",{name,mode:j.mode})); loadVox(); loadLib(); loadHg();
+  }catch(e){status(tr("error",{msg:e.message}),false);}
 };
 
-loadVox(); loadHg(); loadLib();
+/* ---------- Init ---------- */
+async function init(){
+  try{
+    const c=await(await fetch("/api/config")).json();
+    CFG={...CFG,...c}; HIGGS_URL=c.higgs_url||HIGGS_URL;
+  }catch(e){}
+  $("cfg").value=CFG.cfg_default; $("steps").value=CFG.steps_default;
+  applyI18n(); updateGenBtn();
+  // Higgs-Tab ausblenden, wenn deaktiviert
+  if(!CFG.higgs_enabled){ $("tabHiggs").style.display="none"; $("paneHiggs").classList.remove("active"); setHgStatus("disabled"); }
+  setHgStatus(CFG.higgs_enabled?"idle":"disabled");
+  loadVox(); loadLib(); loadHg();
+  pollHiggs(false);
+  // Tab-Buttons neu beschriften (i18n)
+}
+init();
 </script>
 </body>
 </html>
