@@ -440,9 +440,9 @@ function voxPayload(){
   return p;
 }
 $("genBtn").onclick=async()=>{
-  if(!$("text").value.trim()){status(tr("enter_text"),false);return;}
+  if(!$("text").value.trim()){rstatus("voxResultMsg",tr("enter_text"),false);return;}
   const m=$("voxMode").value;
-  if(m!=="design"&&!$("voiceSel").value){status(tr("choose_voice"),false);return;}
+  if(m!=="design"&&!$("voiceSel").value){rstatus("voxResultMsg",tr("choose_voice"),false);return;}
   const btn=$("genBtn"); btn.disabled=true;
   vox={parts:[],rate:48000,wav:null,cachedText:$("text").value};
   $("voxPlayer").src=""; $("voxDl").disabled=true; $("saveGenBtn").disabled=true;
