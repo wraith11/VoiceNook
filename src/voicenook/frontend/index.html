@@ -253,8 +253,20 @@ function applyI18n(){
 
 /* ---------- Status ---------- */
 function status(msg,ok=true){ $("status").textContent=msg; $("status").style.color=ok?"var(--txt)":"var(--err)"; }
-function progress(el,p){ el.style.display=p>=0?"block":"none"; if(p>=0)el.firstElementChild.style.width=p+"%"; }
+// Status unter dem Ergebnis-Bereich
+function rstatus(id,msg,ok=true){ const el=$(id); if(!el)return; el.textContent=msg; el.style.color=ok?"var(--txt)":"var(--err)"; }
 function esc(s){return s.replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+
+/* ---------- In-Progress-Dots (3 springende Punkte) ---------- */
+let dotTimers=[];
+function showDots(container){
+  stopDots();
+  const el=$(container); if(!el)return;
+  el.classList.add("dots-on");
+}
+function stopDots(){
+  document.querySelectorAll(".dots-on").forEach(e=>e.classList.remove("dots-on"));
+}
 
 /* ---------- Tabs ---------- */
 function setTab(w){
