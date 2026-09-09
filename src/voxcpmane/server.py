@@ -33,6 +33,8 @@ import aiofiles
 from huggingface_hub import snapshot_download
 import asyncio
 import argparse
+import subprocess
+import sys
 import ftfy
 
 from .generator import VoxCPM2Generator
