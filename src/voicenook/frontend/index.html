@@ -357,10 +357,10 @@ let voxLoaded=false, hgLoaded=false;
 function setHgStatus(state){
   const el=$("hgStatus"),dot=$("hgDot");
   el.classList.remove("on");
-  if(state==="active"){el.classList.add("on");$("hgStatusTxt").textContent=tr("hg_active");el.title=tr("hg_stop");}
+  if(state==="active"){el.classList.add("on");$("hgStatusTxt").textContent=tr("mdl_loaded_higgs");el.title=tr("unload");}
   else if(state==="loading"){$("hgStatusTxt").textContent=tr("hg_loading");el.title="";}
   else if(state==="disabled"){$("hgStatusTxt").textContent=tr("hg_disabled");el.title="";}
-  else{$("hgStatusTxt").textContent=tr("hg_idle");el.title=tr("hg_start");}
+  else{$("hgStatusTxt").textContent=tr("mdl_idle_higgs");el.title=tr("load");}
 }
 function setVoxStatus(){
   const el=$("voxStatus");
