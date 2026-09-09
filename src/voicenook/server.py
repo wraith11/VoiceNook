@@ -334,41 +334,7 @@ def _setup_voice_caches(repo_id: str, model_dir: str | None,
     """Load VoxCPM2Generator. Called once from main()."""
     global generator, MODEL_PATH_PREFIX, VOICE_CACHE_DIR, VOICE_CACHE_DIRS
 
-    if model_dir is not None:
-        MODEL_PATH_PREFIX = os.path.abspath(model_dir)
-        print(f"📂 Using local model directory: {MODEL_PATH_PREFIX}")
-    else:
-        print(f"🚀 Downloading models from HuggingFace: {repo_id}")
-        MODEL_PATH_PREFIX = snapshot_download(repo_id=repo_id)
-
-    model_voice_cache_dir = os.path.join(MODEL_PATH_PREFIX, "caches")
-    if included_voice_cache_dir is not None:
-        VOICE_CACHE_DIR = os.path.abspath(included_voice_cache_dir)
-        print(f"🎙️ Using included voice cache directory: {VOICE_CACHE_DIR}")
-    elif os.path.isdir(model_voice_cache_dir):
-        VOICE_CACHE_DIR = model_voice_cache_dir
-    else:
-        print(f"🎙️ Downloading included voice caches from HuggingFace: {repo_id}")
-        voice_snapshot_dir = snapshot_download(
-            repo_id=repo_id,
-            allow_patterns="caches/*",
-        )
-        VOICE_CACHE_DIR = os.path.join(voice_snapshot_dir, "caches")
-    VOICE_CACHE_DIRS = [VOICE_CACHE_DIR]
-
-    try:
-        hf_voice_snapshot_dir = snapshot_download(
-            repo_id=repo_id,
-            allow_patterns="caches/*",
-        )
-        hf_voice_cache_dir = os.path.join(hf_voice_snapshot_dir, "caches")
-        if os.path.isdir(hf_voice_cache_dir) and os.path.abspath(
-            hf_voice_cache_dir
-        ) not in {os.path.abspath(d) for d in VOICE_CACHE_DIRS}:
-            VOICE_CACHE_DIRS.append(hf_voice_cache_dir)
-            print(f"🎙️ Using HF voice cache fallback: {hf_voice_cache_dir}")
-    except Exception as exc:
-        print(f"⚠️ Could not initialize HF voice cache fallback: {exc}")
+    _setup_voice_caches(repo_id, model_dir, included_voice_cache_dir)
 
     base_lm_split_paths, resolved_base_lm_path, base_lm_splits = resolve_base_lm_paths(
         MODEL_PATH_PREFIX,
