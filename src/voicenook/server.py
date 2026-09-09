@@ -48,7 +48,7 @@ from .metrics import (
     _mark_first_byte,
     _print_final_metrics,
 )
-import voxcpmane.metrics as metrics
+import voicenook.metrics as metrics
 
 try:
     from pydub import AudioSegment
