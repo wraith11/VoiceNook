@@ -34,6 +34,10 @@
   .refbtn{background:none;border:none;color:var(--acc);cursor:pointer;font-size:.75rem;padding:0;text-decoration:underline;text-underline-offset:2px}
   .refrow .reftxt{display:none;margin-top:.35rem;padding:.45rem .6rem;background:var(--panel2);border:1px solid var(--line);border-radius:6px;font-size:.78rem;color:var(--txt);white-space:normal}
   .refrow .reftxt.open{display:block}
+  .voicedetails{display:inline-block}
+  .voicedetails summary{cursor:pointer;color:var(--mut);font-size:.75rem;list-style:none;padding:.25rem .4rem;border:1px solid var(--line);border-radius:6px}
+  .voicedetails summary::-webkit-details-marker{display:none}
+  .voicedetails[open] summary{border-color:var(--acc);color:var(--acc)}
   #status{margin:.6rem 0;font-size:.88rem;min-height:1.2em}
   .voice{display:flex;justify-content:space-between;align-items:center;gap:.6rem;padding:.5rem .4rem;border-bottom:1px solid var(--line);flex-wrap:wrap}
   .voice:last-child{border-bottom:none}
