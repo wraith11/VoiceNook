@@ -170,6 +170,7 @@ def synthesize_stream(body: dict):
 
 @app.post("/api/synthesize")
 def synthesize(body: dict):
+    _touch_activity()
     text = (body.get("text") or "").strip()
     if not text:
         raise HTTPException(400, "Text leer")
