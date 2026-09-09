@@ -1782,6 +1782,9 @@ def main():
                      "higgs_model"}
     }
 
+    # Systemstimmen bereits beim Start verfuegbar (auch ohne geladenes Modell)
+    _setup_voice_caches(args.repo_id, args.model_dir, args.included_voice_cache_dir)
+
     # Higgs in-process mounten + konfigurieren
     from . import higgs_server as hs
     app.mount("/higgs", hs.app, name="higgs")
