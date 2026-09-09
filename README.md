@@ -115,4 +115,7 @@ voicenook-server --host 0.0.0.0 --port 8005
 
 ---
 
-[![Vibe Coded](https://img.shields.io/badge/Vibe--Coded-100%25-purple?style=for-the-badge)]() 
+## Hinweis zur Entwicklung
+
+Dieses Projekt wurde vollständig mit **DeepSeek v4 Flash** entwickelt.
+Die KI generierte den Großteil des Codes; Review und Testing wurden manuell durchgeführt.
