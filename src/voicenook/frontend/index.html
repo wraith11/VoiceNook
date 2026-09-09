@@ -297,7 +297,7 @@ function setTab(w){
   [["tabVox","paneVox"],["tabHiggs","paneHiggs"],["tabLib","paneLib"]].forEach(([t,p])=>{
     $(t).classList.toggle("active",w===p); $(p).classList.toggle("active",w===p);
   });
-  if(w==="paneHiggs") pollHiggs(true);
+  if(w==="paneHiggs") pollModels();
 }
 $("tabVox").onclick=()=>setTab("paneVox");
 $("tabHiggs").onclick=()=>setTab("paneHiggs");
