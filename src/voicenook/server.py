@@ -1712,8 +1712,12 @@ def main():
     )
     # ---- VoiceNook Optionen ----
     parser.add_argument(
-        "--lang", type=str, choices=["de", "en"], default="de",
-        help="WebUI-Sprache: de oder en (Standard: de).",
+        "--port", "-p", type=int, default=8080,
+        help="WebUI-Port (Standard: 8080).",
+    )
+    parser.add_argument(
+        "--lang", type=str, choices=["de", "en"], default="en",
+        help="WebUI-Sprache: de oder en (Standard: en).",
     )
     parser.add_argument(
         "--cfg-default", type=float, default=2.0,
@@ -1726,17 +1730,27 @@ def main():
     )
     parser.add_argument(
         "--no-higgs", action="store_true",
-        help="Higgs-Tab ausblenden und Higgs-Server nie starten (RAM-schwache Systeme).",
+        help="Higgs-Tab ausblenden und Higgs nie laden (RAM-schwache Systeme).",
     )
     parser.add_argument(
-        "--higgs-url", type=str, default="http://127.0.0.1:8006",
-        help="Basis-URL des Higgs-Servers (Standard: http://127.0.0.1:8006).",
+        "--single-model", action="store_true",
+        help="Verhindert, dass VoxCPM2 und Higgs gleichzeitig geladen sind "
+             "(fuer schwache Systeme). Standard: beide duerfen geladen sein.",
+    )
+    parser.add_argument(
+        "--idle-timeout", type=int, default=5,
+        help="Minuten Inaktivitaet bis Modelle automatisch entladen werden "
+             "(Standard: 5). 0 deaktiviert das Entladen.",
+    )
+    parser.add_argument(
+        "--higgs-model", type=str, default="whitelabel/mlx-q6-higgs-tts-3-4b",
+        help="Higgs-Modell-Name (Standard: whitelabel/mlx-q6-higgs-tts-3-4b).",
     )
 
     args = parser.parse_args()
 
     global CUSTOM_VOICE_CACHE_DIR, APP_LANG, CFG_DEFAULT, STEPS_DEFAULT
-    global HIGGS_ENABLED, HIGGS_URL
+    global HIGGS_ENABLED, HIGGS_URL, SINGLE_MODEL, MODEL_IDLE_SECONDS, LOAD_MODEL_KWARGS
     CUSTOM_VOICE_CACHE_DIR = args.cache_dir
     metrics.LIVE_RTF_METRICS = str(args.live_rtf)
     os.makedirs(CUSTOM_VOICE_CACHE_DIR, exist_ok=True)
@@ -1745,20 +1759,33 @@ def main():
     CFG_DEFAULT = args.cfg_default
     STEPS_DEFAULT = args.steps_default
     HIGGS_ENABLED = not args.no_higgs
-    HIGGS_URL = args.higgs_url
+    HIGGS_URL = "/higgs"
+    SINGLE_MODEL = args.single_model
+    if args.idle_timeout and args.idle_timeout > 0:
+        MODEL_IDLE_SECONDS = args.idle_timeout * 60
 
-    load_model(
-        **{
-            k: v
-            for k, v in vars(args).items()
-            if k not in {"cache_dir", "host", "port", "live_rtf"}
-        }
-    )
+    # Lade-Parameter fuer VoxCPM2 fuer spateres On-Demand-Laden merken
+    LOAD_MODEL_KWARGS = {
+        k: v for k, v in vars(args).items()
+        if k not in {"cache_dir", "host", "port", "live_rtf", "lang", "cfg_default",
+                     "steps_default", "no_higgs", "single_model", "idle_timeout",
+                     "higgs_model"}
+    }
 
-    print(f"🚀 Starting VoxCPM2 server on {args.host}:{args.port}")
+    # Higgs in-process mounten + konfigurieren
+    from . import higgs_server as hs
+    app.mount("/higgs", hs.app, name="higgs")
+    hs.configure(model=args.higgs_model, voice_dir=args.cache_dir,
+                 idle_minutes=args.idle_timeout or 5)
+
+    # Idle-Watchdog starten (entlaedt Modelle, damit der Server im Idle ultra-light ist)
+    threading.Thread(target=_model_idle_watchdog, daemon=True).start()
+
+    print(f"🚀 VoiceNook server auf http://{args.host}:{args.port}")
+    print(f"   VoxCPM2: on-demand (Idle-Unload {MODEL_IDLE_SECONDS}s)")
+    print(f"   Higgs:   in-process unter /higgs (Idle-Unload {MODEL_IDLE_SECONDS}s)")
+    print(f"   Sprache: {APP_LANG} | single-model: {SINGLE_MODEL}")
     print(f"   Included voices: {VOICE_CACHE_DIR}")
-    print(f"   Custom cache: {CUSTOM_VOICE_CACHE_DIR}")
-    print(f"   Voices: {len(VOICE_STORE.available())}")
     uvicorn.run(app, host=args.host, port=args.port, log_level="info")
 
 
