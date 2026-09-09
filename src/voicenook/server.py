@@ -1560,9 +1560,7 @@ def _model_idle_watchdog():
         if hs.is_loaded() and (now - hs.last_activity()) > MODEL_IDLE_SECONDS:
             hs.unload_model()
 def main():
-    parser = argparse.ArgumentParser(description="VoxCPM2 TTS Server")
-    parser.add_argument("--port", "-p", type=int, default=8000)
-    parser.add_argument("--host", type=str, default="0.0.0.0")
+    parser = argparse.ArgumentParser(description="VoxCPM2 TTS Server (VoiceNook)")
     parser.add_argument(
         "--cache-dir", type=str, default=os.path.expanduser("~/.cache/ane_tts")
     )
