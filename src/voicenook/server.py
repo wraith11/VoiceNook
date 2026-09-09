@@ -1352,6 +1352,14 @@ async def set_voice_description(voice_name: str, body: dict):
         os.unlink(desc_path)
     return {"status": "success", "description": desc}
 
+@app.get("/v1/voices/{voice_name}/wav")
+async def get_voice_wav(voice_name: str):
+    name = VOICE_STORE.validate(voice_name)
+    wav_path = os.path.join(CUSTOM_VOICE_CACHE_DIR, f"{name}.wav")
+    if not os.path.exists(wav_path):
+        raise HTTPException(status_code=404, detail="Keine Original-WAV fuer diese Stimme")
+    return FileResponse(wav_path, media_type="audio/wav",
+                        headers={"Content-Disposition": f'attachment; filename="{name}.wav"'})
 
 @app.delete("/v1/voices/{voice_name}")
 async def delete_voice(voice_name: str):
