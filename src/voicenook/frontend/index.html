@@ -581,16 +581,19 @@ $("hgDl").onclick=async()=>{
 
 /* ---------- STIMMEN-BIBLIOTHEK ---------- */
 async function testVoice(name){
-  const p={model:"voxcpm2",input:$("testSentence").value||"Hallo.",voice:name,voice_mode:"reference",response_format:"wav"};
-  status(tr("testing",{name}));
+  // High-similarity fuer moeglichst akkurate Wiedergabe (falls Reftext vorhanden)
+  const hasRef = voicesVox.details && !!voicesVox.details[name];
+  const mode = hasRef ? "high_similarity" : "reference";
+  const p={model:"voxcpm2",input:$("testSentence").value||"Hallo.",voice:name,voice_mode:mode,response_format:"wav"};
+  rstatus("libMsg",tr("testing",{name}));
   try{
     const r=await fetch("/v1/audio/speech/stream",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(p)});
     if(!r.ok){let m=r.statusText;try{m=(await r.json()).detail||m;}catch(e){}throw new Error(m);}
     const sr=Number(r.headers.get("X-Sample-Rate"))||48000;
     const rd=r.body.getReader();
     while(true){const{done,value}=await rd.read();if(done)break; if(value&&value.byteLength)playPCM16(value,sr);}
-    status(tr("test_play"));
-  }catch(e){status(tr("error",{msg:e.message}),false);}
+    rstatus("libMsg",tr("test_play"));
+  }catch(e){rstatus("libMsg",tr("error",{msg:e.message}),false);}
 }
 async function loadLib(){
   try{
