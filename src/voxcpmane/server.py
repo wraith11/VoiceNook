@@ -739,6 +739,31 @@ def compile_voice_feature_cache_from_audio(
         )
 
 
+def _compile_custom_voice(name: str, audio_path: str, prompt_text_val: str) -> str:
+    """Baue VoxCPM2-Cache + name.txt aus einer Audiodatei. Gibt Modus zurueck."""
+    os.makedirs(CUSTOM_VOICE_CACHE_DIR, exist_ok=True)
+    VOICE_FEATURE_CACHE_MEMORY.pop((name, "reference"), None)
+    VOICE_FEATURE_CACHE_MEMORY.pop((name, "prompt"), None)
+    for stale_suffix in (
+        ".embed.npy", ".prompt.embed.npy", ".prompt.cond.npy",
+        ".prompt.decode_context.npy", ".npy",
+    ):
+        stale_path = os.path.join(CUSTOM_VOICE_CACHE_DIR, f"{name}{stale_suffix}")
+        if os.path.exists(stale_path):
+            os.unlink(stale_path)
+    VOICE_STORE.remove_lm_prefix_caches(name)
+
+    compile_voice_feature_cache_from_audio(name, audio_path)
+    txt_path = os.path.join(CUSTOM_VOICE_CACHE_DIR, f"{name}.txt")
+    if prompt_text_val:
+        compile_voice_feature_cache_from_audio(name, audio_path, prompt=True)
+        with open(txt_path, "w", encoding="utf-8") as f:
+            f.write(prompt_text_val)
+        return "reference_plus_continuation"
+    if os.path.exists(txt_path):
+        os.unlink(txt_path)
+    return "reference"
+
 def get_lm_cache_length() -> int | None:
     return (
         int(generator.lm_cache_length)
