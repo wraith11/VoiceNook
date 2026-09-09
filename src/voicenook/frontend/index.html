@@ -351,6 +351,17 @@ function updateGenBtn(){
   $("optPlay").classList.toggle("on",genMode==="play");
   $("optOnly").classList.toggle("on",genMode==="only");
 }
+/* Higgs eigener Modus (Generate & play / only) */
+let hgGenMode="play";
+$("hgGenCaret").onclick=(e)=>{e.stopPropagation();$("hgGenMenu").style.display=$("hgGenMenu").style.display==="none"?"block":"none";};
+document.addEventListener("click",()=>{$("hgGenMenu").style.display="none";});
+$("hgOptPlay").onclick=()=>{hgGenMode="play";updateHgGenBtn();$("hgGenMenu").style.display="none";};
+$("hgOptOnly").onclick=()=>{hgGenMode="only";updateHgGenBtn();$("hgGenMenu").style.display="none";};
+function updateHgGenBtn(){
+  $("hgGenBtn").textContent=tr(hgGenMode==="play"?"gen_play":"gen_only_opt");
+  $("hgOptPlay").classList.toggle("on",hgGenMode==="play");
+  $("hgOptOnly").classList.toggle("on",hgGenMode==="only");
+}
 
 /* ---------- Modell-Status (VoxCPM2 + Higgs) ---------- */
 let voxLoaded=false, hgLoaded=false;
