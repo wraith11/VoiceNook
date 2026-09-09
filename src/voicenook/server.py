@@ -1391,6 +1391,9 @@ async def upload_voice(
     prompt_text: str = Form(""),
     file: UploadFile = File(...),
 ):
+    _touch_vox_activity()
+    if not vox_load():
+        raise HTTPException(status_code=503, detail="VoxCPM2 konnte nicht geladen werden")
     name = VOICE_STORE.validate(voice_name)
     if VOICE_STORE.is_default(name):
         raise HTTPException(status_code=403, detail=f"'{name}' ist eine Systemstimme")
