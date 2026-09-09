@@ -1206,6 +1206,9 @@ async def stream_speech(request: SpeechRequest):
 @app.post("/v1/audio/speech/playback")
 async def playback_speech(request: SpeechRequest):
     global CURRENT_JOB
+    _touch_vox_activity()
+    if not vox_load():
+        raise HTTPException(status_code=503, detail="VoxCPM2 konnte nicht geladen werden")
     job = submit_generation_job(request)
     CURRENT_JOB = job
 
