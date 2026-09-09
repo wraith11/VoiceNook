@@ -281,8 +281,6 @@ def pathify_gen_kwargs(gen_kwargs: dict) -> None:
         ]
 
 
-def load_model(
-    model_dir: str | None = None,
 def _setup_voice_caches(repo_id: str, model_dir: str | None,
                         included_voice_cache_dir: str | None) -> None:
     """Richtet VOICE_CACHE_DIR ein, damit Systemstimmen auch ohne geladenes Modell
@@ -311,6 +309,10 @@ def _setup_voice_caches(repo_id: str, model_dir: str | None,
             VOICE_CACHE_DIRS.append(hf_voice_cache_dir)
     except Exception as exc:
         print(f"⚠️ Could not initialize HF voice cache fallback: {exc}")
+
+
+def load_model(
+    model_dir: str | None = None,
     repo_id: str = REPO_ID,
     included_voice_cache_dir: str | None = None,
     embedding_path: str | None = None,
