@@ -283,6 +283,34 @@ def pathify_gen_kwargs(gen_kwargs: dict) -> None:
 
 def load_model(
     model_dir: str | None = None,
+def _setup_voice_caches(repo_id: str, model_dir: str | None,
+                        included_voice_cache_dir: str | None) -> None:
+    """Richtet VOICE_CACHE_DIR ein, damit Systemstimmen auch ohne geladenes Modell
+    sofort in /voices erscheinen."""
+    global MODEL_PATH_PREFIX, VOICE_CACHE_DIR, VOICE_CACHE_DIRS
+    if model_dir is not None:
+        MODEL_PATH_PREFIX = os.path.abspath(model_dir)
+    else:
+        MODEL_PATH_PREFIX = snapshot_download(repo_id=repo_id)
+    model_voice_cache_dir = os.path.join(MODEL_PATH_PREFIX, "caches")
+    if included_voice_cache_dir is not None:
+        VOICE_CACHE_DIR = os.path.abspath(included_voice_cache_dir)
+    elif os.path.isdir(model_voice_cache_dir):
+        VOICE_CACHE_DIR = model_voice_cache_dir
+    else:
+        voice_snapshot_dir = snapshot_download(
+            repo_id=repo_id, allow_patterns="caches/*")
+        VOICE_CACHE_DIR = os.path.join(voice_snapshot_dir, "caches")
+    VOICE_CACHE_DIRS = [VOICE_CACHE_DIR]
+    try:
+        hf_voice_snapshot_dir = snapshot_download(
+            repo_id=repo_id, allow_patterns="caches/*")
+        hf_voice_cache_dir = os.path.join(hf_voice_snapshot_dir, "caches")
+        if os.path.isdir(hf_voice_cache_dir) and os.path.abspath(
+                hf_voice_cache_dir) not in {os.path.abspath(d) for d in VOICE_CACHE_DIRS}:
+            VOICE_CACHE_DIRS.append(hf_voice_cache_dir)
+    except Exception as exc:
+        print(f"⚠️ Could not initialize HF voice cache fallback: {exc}")
     repo_id: str = REPO_ID,
     included_voice_cache_dir: str | None = None,
     embedding_path: str | None = None,
