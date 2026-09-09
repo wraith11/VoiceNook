@@ -1367,6 +1367,7 @@ async def delete_voice(voice_name: str):
         ".prompt.decode_context.npy",
         ".npy",
         ".txt",
+        ".desc.txt",
         ".wav",
         ".flac",
         ".mp3",
