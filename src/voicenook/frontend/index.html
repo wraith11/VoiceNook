@@ -612,9 +612,17 @@ async function playVoiceWav(name){
     const r=await fetch("/v1/voices/"+encodeURIComponent(name)+"/wav");
     if(!r.ok){ let m=r.statusText; try{m=(await r.json()).detail||m;}catch(e){} throw new Error(m); }
     const ab=await r.arrayBuffer();
-    // WAV-Header (44 Bytes) abspalten -> rohe PCM16
-    const pcm = ab.byteLength>44 ? ab.slice(44) : ab;
-    playPCM16(pcm, 16000);
+    // WAV-Header auslesen: Sample-Rate + Kanäle
+    let sr=16000, channels=1;
+    if(ab.byteLength>44){
+      const dv=new DataView(ab);
+      sr=dv.getUint32(24,true);        // Sample-Rate
+      channels=dv.getUint16(22,true);  // Kanäle
+    }
+    let pcm = ab.byteLength>44 ? ab.slice(44) : ab;
+    // Bei mehreren Kanaelen nur Kanal 0 (mono) behalten
+    if(channels>1){ const n=Math.floor(pcm.byteLength/(2*channels)); const tmp=new Int16Array(pcm,0,n*channels); const mono=new Int16Array(n); for(let i=0;i<n;i++)mono[i]=tmp[i*channels]; pcm=mono.buffer; }
+    playPCM16(pcm, sr);
     rstatus("libMsg",tr("test_play"));
   }catch(e){rstatus("libMsg",tr("error",{msg:e.message}),false);}
 }
