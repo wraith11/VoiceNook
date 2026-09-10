@@ -649,7 +649,6 @@ async function renameVoice(name){
   }catch(e){rstatus("libMsg",tr("error",{msg:e.message}),false);}
 }
 async function loadLib(){
-async function loadLib(){
   try{
     // Sicherstellen, dass voicesHg (Higgs-Verfuegbarkeit) geladen ist
     if(!voicesHg.length){ try{ await loadHg(); }catch(e){} }
