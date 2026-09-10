@@ -332,8 +332,12 @@ function stopPlayback(){
   if(ctx){ try{ctx.close();}catch(e){} ctx=null; }
 }
 function playPCM16(ab,sr){
+  // ab kann ein ArrayBuffer ODER Uint8Array sein
+  const isBuf = ab instanceof ArrayBuffer;
+  const buf = isBuf ? ab : ab.buffer;
+  const off = isBuf ? 0 : ab.byteOffset;
   const n=Math.floor(ab.byteLength/2); if(n<=0)return;
-  const i16=new Int16Array(ab.buffer, ab.byteOffset, n), f32=new Float32Array(n);
+  const i16=new Int16Array(buf, off, n), f32=new Float32Array(n);
   for(let i=0;i<n;i++) f32[i]=i16[i]/32768;
   const c=getCtx(sr), now=c.currentTime;
   if(nextT<now+0.12)nextT=now+0.12;
