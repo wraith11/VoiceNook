@@ -671,9 +671,9 @@ async function loadLib(){
       const debugRows = (ref?'<div class="refrow"><button class="refbtn" onclick="this.nextElementSibling.classList.toggle(\'open\')">'+(CFG.lang==="en"?"Reftext":"Reftext")+' ▾</button>'+
         '<div class="reftxt">'+ref+'</div></div>':"")+
         '<div class="popbtns">'+
-          '<button class="btn sec" onclick="renameVoice(\''+n+'\')">'+(CFG.lang==="en"?"Rename":"Umbenennen")+'</button>'+
           '<button class="btn sec" onclick="playVoiceWav(\''+n+'\')">'+(CFG.lang==="en"?"WAV":"WAV")+' ▶</button>'+
           '<a class="btn sec" href="/v1/voices/'+encodeURIComponent(n)+'/wav" download="'+n+'.wav">'+(CFG.lang==="en"?"Download":"Download")+'</a>'+
+          '<button class="btn sec" onclick="renameVoice(\''+n+'\')">'+(CFG.lang==="en"?"Rename":"Umbenennen")+'</button>'+
         '</div>';
       const details='<span class="vpop"><button class="popbtn" onclick="togglePop(this)">'+(CFG.lang==="en"?"Details":"Details")+' ▾</button>'+
         '<div class="popbox">'+debugRows+'</div></span>';
