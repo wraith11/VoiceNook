@@ -629,6 +629,24 @@ async function playVoiceWav(name){
     rstatus("libMsg",tr("test_play"));
   }catch(e){rstatus("libMsg",tr("error",{msg:e.message}),false);}
 }
+function togglePop(btn){
+  const pop=btn.closest(".vpop");
+  const wasOpen=pop.classList.contains("open");
+  document.querySelectorAll(".vpop.open").forEach(p=>p.classList.remove("open"));
+  if(!wasOpen) pop.classList.add("open");
+}
+document.addEventListener("click",(e)=>{ if(!e.target.closest(".vpop")) document.querySelectorAll(".vpop.open").forEach(p=>p.classList.remove("open")); });
+async function renameVoice(name){
+  const newName=prompt(CFG.lang==="en"?("Rename '"+name+"' to:"):("'"+name+"' umbenennen zu:"), name);
+  if(!newName||!newName.trim()||newName===name)return;
+  try{
+    const r=await fetch("/v1/voices/"+encodeURIComponent(name)+"/rename",{method:"POST",
+      headers:{"Content-Type":"application/json"},body:JSON.stringify({new_name:newName.trim()})});
+    if(!r.ok)throw new Error((await r.json()).detail||r.statusText);
+    rstatus("libMsg",tr("renamed",{name,newName:newName.trim()})); loadVox(); await loadHg(); loadLib();
+  }catch(e){rstatus("libMsg",tr("error",{msg:e.message}),false);}
+}
+async function loadLib(){
 async function loadLib(){
   try{
     // Sicherstellen, dass voicesHg (Higgs-Verfuegbarkeit) geladen ist
