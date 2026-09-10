@@ -639,20 +639,22 @@ async function loadLib(){
     // Custom-Stimmen zuerst, dann Systemstimmen
     cus.forEach(n=>{
       const d=document.createElement("div"); d.className="voice";
-      d.style.display="block"; d.style.padding=".5rem .4rem";
+      d.style.display="block"; d.style.padding=".5rem .4rem"; d.style.position="relative";
       // Higgs-Verfuegbarkeit: hat die Stimme eine .wav? (in voicesHg aus /higgs/api/voices)
       const hasHiggs = (voicesHg||[]).indexOf(n)!==-1;
       const higgsBadge = hasHiggs?"":'<span class="hibadge" title="'+(CFG.lang==="en"?"Not available in Higgs":"Nicht für Higgs verfügbar")+'"><span class="xcircle">✕</span> Higgs</span>';
       const curDesc = esc(desc[n]||"");
       const ref = det[n]?esc(det[n]):"";
-      // Debug-Bereich (Details): Reftext + Original-WAV
+      // Debug-Bereich (Details) als Popover, ohne die Zeile zu verschieben
       const debugRows = (ref?'<div class="refrow"><button class="refbtn" onclick="this.nextElementSibling.classList.toggle(\'open\')">'+(CFG.lang==="en"?"Reftext":"Reftext")+' ▾</button>'+
         '<div class="reftxt">'+ref+'</div></div>':"")+
-        '<div class="row" style="margin-top:.3rem">'+
-          '<button class="btn sec" onclick="playVoiceWav(\''+n+'\')">'+(CFG.lang==="en"?"Original WAV":"Original-WAV")+' ▶</button>'+
-          '<a class="btn sec" href="/v1/voices/'+encodeURIComponent(n)+'/wav" download="'+n+'.wav">'+(CFG.lang==="en"?"Download WAV":"WAV laden")+'</a>'+
+        '<div class="popbtns">'+
+          '<button class="btn sec" onclick="renameVoice(\''+n+'\')">'+(CFG.lang==="en"?"Rename":"Umbenennen")+'</button>'+
+          '<button class="btn sec" onclick="playVoiceWav(\''+n+'\')">'+(CFG.lang==="en"?"WAV":"WAV")+' ▶</button>'+
+          '<a class="btn sec" href="/v1/voices/'+encodeURIComponent(n)+'/wav" download="'+n+'.wav">'+(CFG.lang==="en"?"Download":"Download")+'</a>'+
         '</div>';
-      const details='<details class="voicedetails"><summary>'+(CFG.lang==="en"?"Details":"Details")+' ▾</summary><div style="margin-top:.3rem">'+debugRows+'</div></details>';
+      const details='<span class="vpop"><button class="popbtn" onclick="togglePop(this)">'+(CFG.lang==="en"?"Details":"Details")+' ▾</button>'+
+        '<div class="popbox">'+debugRows+'</div></span>';
       d.innerHTML='<div style="display:flex;align-items:center;gap:.4rem;flex-wrap:wrap"><strong>'+n+'</strong><span class="tag">Custom</span>'+higgsBadge+
         '<span style="flex:1"></span>'+
         '<button class="btn sec" onclick="testVoice(\''+n+'\')">'+(CFG.lang==="en"?"Test":"Testen")+'</button>'+
