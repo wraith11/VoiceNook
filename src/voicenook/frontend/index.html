@@ -30,14 +30,17 @@
   .hibadge .xcircle{display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;border-radius:50%;border:1.5px solid var(--err);color:var(--err);font-size:.65rem;line-height:1}
   .libdesc{flex:1;min-width:140px}
   /* Reftext-Button ohne Rahmen; Klick blendet Reftext in eigener Zeile ein */
-  .refrow{margin:.3rem 0}
+  .refrow{margin:0 0 .3rem}
   .refbtn{background:none;border:none;color:var(--acc);cursor:pointer;font-size:.75rem;padding:0;text-decoration:underline;text-underline-offset:2px}
   .refrow .reftxt{display:none;margin-top:.35rem;padding:.45rem .6rem;background:var(--panel2);border:1px solid var(--line);border-radius:6px;font-size:.78rem;color:var(--txt);white-space:normal}
   .refrow .reftxt.open{display:block}
-  .voicedetails{display:inline-block}
-  .voicedetails summary{cursor:pointer;color:var(--mut);font-size:.75rem;list-style:none;padding:.25rem .4rem;border:1px solid var(--line);border-radius:6px}
-  .voicedetails summary::-webkit-details-marker{display:none}
-  .voicedetails[open] summary{border-color:var(--acc);color:var(--acc)}
+  /* Details als Popover (ueberlappend, verschiebt die Zeile nicht) */
+  .vpop{position:relative;display:inline-block}
+  .vpop .popbtn{background:var(--panel2);border:1px solid var(--line);color:var(--mut);cursor:pointer;font-size:.75rem;padding:.25rem .4rem;border-radius:6px}
+  .vpop .popbox{display:none;position:absolute;right:0;top:1.6em;z-index:50;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:.6rem;min-width:190px;box-shadow:0 6px 20px rgba(0,0,0,.5)}
+  .vpop.open .popbox{display:block}
+  .vpop .popbox .popbtns{display:flex;gap:.4rem;flex-wrap:wrap;margin-top:.3rem}
+  .vpop .popbox .popbtns .btn{padding:.35rem .6rem;font-size:.75rem}
   #status{margin:.6rem 0;font-size:.88rem;min-height:1.2em}
   .voice{display:flex;justify-content:space-between;align-items:center;gap:.6rem;padding:.5rem .4rem;border-bottom:1px solid var(--line);flex-wrap:wrap}
   .voice:last-child{border-bottom:none}
@@ -205,13 +208,13 @@
       <div class="row" style="margin-top:.6rem"><div class="g"><label data-i18n="audiofile">Audiodatei (mp3/wav/flac…)</label><input type="file" id="libFile" accept="audio/*"></div></div>
       <div class="row" style="margin-top:.6rem"><button class="btn ok" id="libCreateBtn" data-i18n="create_voice">Stimme erstellen</button></div>
     </div>
+    <div id="libMsg" style="font-size:.85rem;min-height:1.2em;margin:.2rem 0"></div>
     <div class="card">
       <h3 data-i18n="existing">Vorhandene Stimmen</h3>
       <label data-i18n="testsentence">Testsatz für die Vorschau</label>
       <input type="text" id="testSentence" style="width:100%" value="Hallo, das ist ein Test meiner Stimme.">
       <div id="libList" style="margin-top:.4rem"><p class="hint">Lade…</p></div>
     </div>
-    <div id="libMsg" style="font-size:.85rem;min-height:1.2em;margin:.2rem 0 .8rem"></div>
   </div>
 </div>
 
@@ -248,7 +251,8 @@ const T={
     higgs_auto:"Higgs wurde automatisch gestartet. Der erste Lauf lädt das Modell und dauert etwas.",
     mdl_loaded_vox:"VoxCPM2 geladen",mdl_idle_vox:"VoxCPM2 standby",
     mdl_loaded_higgs:"Higgs v3 geladen",mdl_idle_higgs:"Higgs v3 standby",
-    load:"Laden",unload:"Entladen",desc_hint:"Beschreibung (optional)",desc_saved:"Beschreibung für '{name}' gespeichert."},
+    load:"Laden",unload:"Entladen",desc_hint:"Beschreibung (optional)",desc_saved:"Beschreibung für '{name}' gespeichert.",
+    renamed:"Stimme '{name}' zu '{newName}' umbenannt."},
   en:{tab_vox:"VoxCPM2",tab_higgs:"Higgs v3",tab_lib:"Voice Library",mode:"Mode",
     mode_design:"Voice Design (description only)",mode_ref:"Clone (Reference + description)",
     mode_high:"Clone (High similarity, no description)",desc:"Voice description (English)",
@@ -269,7 +273,8 @@ const T={
     higgs_auto:"Higgs started automatically. The first run loads the model and takes a moment.",
     mdl_loaded_vox:"VoxCPM2 loaded",mdl_idle_vox:"VoxCPM2 standby",
     mdl_loaded_higgs:"Higgs v3 loaded",mdl_idle_higgs:"Higgs v3 standby",
-    load:"Load",unload:"Unload",desc_hint:"Description (optional)",desc_saved:"Description saved for '{name}'."}
+    load:"Load",unload:"Unload",desc_hint:"Description (optional)",desc_saved:"Description saved for '{name}'.",
+    renamed:"Voice '{name}' renamed to '{newName}'."}
 };
 function tr(key,params){
   let s=(T[CFG.lang]||T.de)[key]||key;
@@ -612,12 +617,38 @@ async function playVoiceWav(name){
     const r=await fetch("/v1/voices/"+encodeURIComponent(name)+"/wav");
     if(!r.ok){ let m=r.statusText; try{m=(await r.json()).detail||m;}catch(e){} throw new Error(m); }
     const ab=await r.arrayBuffer();
-    // WAV-Header (44 Bytes) abspalten -> rohe PCM16
-    const pcm = ab.byteLength>44 ? ab.slice(44) : ab;
-    playPCM16(pcm, 16000);
+    // WAV-Header auslesen: Sample-Rate + Kanäle
+    let sr=16000, channels=1;
+    if(ab.byteLength>44){
+      const dv=new DataView(ab);
+      sr=dv.getUint32(24,true);        // Sample-Rate
+      channels=dv.getUint16(22,true);  // Kanäle
+    }
+    let pcm = ab.byteLength>44 ? ab.slice(44) : ab;
+    // Bei mehreren Kanaelen nur Kanal 0 (mono) behalten
+    if(channels>1){ const n=Math.floor(pcm.byteLength/(2*channels)); const tmp=new Int16Array(pcm,0,n*channels); const mono=new Int16Array(n); for(let i=0;i<n;i++)mono[i]=tmp[i*channels]; pcm=mono.buffer; }
+    playPCM16(pcm, sr);
     rstatus("libMsg",tr("test_play"));
   }catch(e){rstatus("libMsg",tr("error",{msg:e.message}),false);}
 }
+function togglePop(btn){
+  const pop=btn.closest(".vpop");
+  const wasOpen=pop.classList.contains("open");
+  document.querySelectorAll(".vpop.open").forEach(p=>p.classList.remove("open"));
+  if(!wasOpen) pop.classList.add("open");
+}
+document.addEventListener("click",(e)=>{ if(!e.target.closest(".vpop")) document.querySelectorAll(".vpop.open").forEach(p=>p.classList.remove("open")); });
+async function renameVoice(name){
+  const newName=prompt(CFG.lang==="en"?("Rename '"+name+"' to:"):("'"+name+"' umbenennen zu:"), name);
+  if(!newName||!newName.trim()||newName===name)return;
+  try{
+    const r=await fetch("/v1/voices/"+encodeURIComponent(name)+"/rename",{method:"POST",
+      headers:{"Content-Type":"application/json"},body:JSON.stringify({new_name:newName.trim()})});
+    if(!r.ok)throw new Error((await r.json()).detail||r.statusText);
+    rstatus("libMsg",tr("renamed",{name,newName:newName.trim()})); loadVox(); await loadHg(); loadLib();
+  }catch(e){rstatus("libMsg",tr("error",{msg:e.message}),false);}
+}
+async function loadLib(){
 async function loadLib(){
   try{
     // Sicherstellen, dass voicesHg (Higgs-Verfuegbarkeit) geladen ist
@@ -631,20 +662,22 @@ async function loadLib(){
     // Custom-Stimmen zuerst, dann Systemstimmen
     cus.forEach(n=>{
       const d=document.createElement("div"); d.className="voice";
-      d.style.display="block"; d.style.padding=".5rem .4rem";
+      d.style.display="block"; d.style.padding=".5rem .4rem"; d.style.position="relative";
       // Higgs-Verfuegbarkeit: hat die Stimme eine .wav? (in voicesHg aus /higgs/api/voices)
       const hasHiggs = (voicesHg||[]).indexOf(n)!==-1;
       const higgsBadge = hasHiggs?"":'<span class="hibadge" title="'+(CFG.lang==="en"?"Not available in Higgs":"Nicht für Higgs verfügbar")+'"><span class="xcircle">✕</span> Higgs</span>';
       const curDesc = esc(desc[n]||"");
       const ref = det[n]?esc(det[n]):"";
-      // Debug-Bereich (Details): Reftext + Original-WAV
+      // Debug-Bereich (Details) als Popover, ohne die Zeile zu verschieben
       const debugRows = (ref?'<div class="refrow"><button class="refbtn" onclick="this.nextElementSibling.classList.toggle(\'open\')">'+(CFG.lang==="en"?"Reftext":"Reftext")+' ▾</button>'+
         '<div class="reftxt">'+ref+'</div></div>':"")+
-        '<div class="row" style="margin-top:.3rem">'+
-          '<button class="btn sec" onclick="playVoiceWav(\''+n+'\')">'+(CFG.lang==="en"?"Original WAV":"Original-WAV")+' ▶</button>'+
-          '<a class="btn sec" href="/v1/voices/'+encodeURIComponent(n)+'/wav" download="'+n+'.wav">'+(CFG.lang==="en"?"Download WAV":"WAV laden")+'</a>'+
+        '<div class="popbtns">'+
+          '<button class="btn sec" onclick="renameVoice(\''+n+'\')">'+(CFG.lang==="en"?"Rename":"Umbenennen")+'</button>'+
+          '<button class="btn sec" onclick="playVoiceWav(\''+n+'\')">'+(CFG.lang==="en"?"WAV":"WAV")+' ▶</button>'+
+          '<a class="btn sec" href="/v1/voices/'+encodeURIComponent(n)+'/wav" download="'+n+'.wav">'+(CFG.lang==="en"?"Download":"Download")+'</a>'+
         '</div>';
-      const details='<details class="voicedetails"><summary>'+(CFG.lang==="en"?"Details":"Details")+' ▾</summary><div style="margin-top:.3rem">'+debugRows+'</div></details>';
+      const details='<span class="vpop"><button class="popbtn" onclick="togglePop(this)">'+(CFG.lang==="en"?"Details":"Details")+' ▾</button>'+
+        '<div class="popbox">'+debugRows+'</div></span>';
       d.innerHTML='<div style="display:flex;align-items:center;gap:.4rem;flex-wrap:wrap"><strong>'+n+'</strong><span class="tag">Custom</span>'+higgsBadge+
         '<span style="flex:1"></span>'+
         '<button class="btn sec" onclick="testVoice(\''+n+'\')">'+(CFG.lang==="en"?"Test":"Testen")+'</button>'+
