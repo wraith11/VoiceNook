@@ -1360,6 +1360,33 @@ async def get_voice_wav(voice_name: str):
         raise HTTPException(status_code=404, detail="Keine Original-WAV fuer diese Stimme")
     return FileResponse(wav_path, media_type="audio/wav",
                         headers={"Content-Disposition": f'attachment; filename="{name}.wav"'})
+@app.post("/v1/voices/{voice_name}/rename")
+async def rename_voice(voice_name: str, body: dict):
+    old = VOICE_STORE.validate(voice_name)
+    if not VOICE_STORE.is_custom(old):
+        raise HTTPException(status_code=404, detail=f"Custom voice '{old}' not found")
+    new = VOICE_STORE.validate(body.get("new_name") or "")
+    if new == old:
+        return {"status": "success"}
+    new_embed = os.path.join(CUSTOM_VOICE_CACHE_DIR, f"{new}.embed.npy")
+    if os.path.exists(new_embed):
+        raise HTTPException(status_code=409, detail=f"Stimme '{new}' existiert bereits")
+    # Alle Dateien mit Praefix "old." umbenennen
+    renamed = []
+    for f in os.listdir(CUSTOM_VOICE_CACHE_DIR):
+        if not f.startswith(old + "."):
+            continue
+        src = os.path.join(CUSTOM_VOICE_CACHE_DIR, f)
+        dst = os.path.join(CUSTOM_VOICE_CACHE_DIR, new + f[len(old):])
+        try:
+            os.rename(src, dst)
+            renamed.append(f)
+        except OSError as exc:
+            raise HTTPException(status_code=500, detail=f"Umbenennen fehlgeschlagen: {exc}")
+    VOICE_FEATURE_CACHE_MEMORY.pop((old, "reference"), None)
+    VOICE_FEATURE_CACHE_MEMORY.pop((old, "prompt"), None)
+    VOICE_STORE.remove_lm_prefix_caches(old)
+    return {"status": "success", "renamed": renamed}
 
 @app.delete("/v1/voices/{voice_name}")
 async def delete_voice(voice_name: str):
