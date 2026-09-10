@@ -619,6 +619,7 @@ async function playVoiceWav(name){
   }catch(e){rstatus("libMsg",tr("error",{msg:e.message}),false);}
 }
 async function loadLib(){
+  try{
     // Sicherstellen, dass voicesHg (Higgs-Verfuegbarkeit) geladen ist
     if(!voicesHg.length){ try{ await loadHg(); }catch(e){} }
     const j=await(await fetch("/voices")).json();
