@@ -505,8 +505,13 @@ $("genBtn").onclick=async()=>{
       rstatus("voxResultMsg",tr("gen_only_done",{s:Math.round(ab.byteLength/2/sr)}));
     } else {
       const rd=r.body.getReader();
-      while(true){const{done,value}=await rd.read();if(done)break;
-        if(value&&value.byteLength){if(ttfb===null){ttfb=Math.round(performance.now()-t0);rstatus("voxResultMsg",tr("gen_ttfb",{ms:ttfb}));}playPCM16(value,sr);vox.parts.push(value);}}
+      await readSSE(rd,(ev)=>{
+        if(ev.pcm){
+          const u8=b64ToBytes(ev.pcm);
+          if(ttfb===null){ttfb=Math.round(performance.now()-t0);rstatus("voxResultMsg",tr("gen_ttfb",{ms:ttfb}));}
+          playPCM16(u8,sr); vox.parts.push(u8);
+        }
+      });
       if(vox.parts.length){ vox.wav=buildWav(vox.parts,sr);
         $("voxPlayer").src=URL.createObjectURL(vox.wav);
         $("voxDl").disabled=false; $("saveGenBtn").disabled=false;
