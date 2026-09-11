@@ -25,6 +25,12 @@ Beide Modelle laufen **in-process** unter einem einzigen Port und laden **on-dem
 
 ---
 
+![UI1](docs/images/image1.png)
+
+![UI2](docs/images/image2.png)
+
+---
+
 ## Modell-Lifecycle & RAM
 
 | Komponente | Zusätzlicher RAM |
