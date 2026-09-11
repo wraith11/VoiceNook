@@ -609,8 +609,13 @@ $("hgGenBtn").onclick=async()=>{
       rstatus("hgResultMsg",tr("gen_only_done",{s:Math.round(ab.byteLength/2/sr)}));
     } else {
       const rd=r.body.getReader();
-      while(true){const{done,value}=await rd.read();if(done)break;
-        if(value&&value.byteLength){if(ttfb===null){ttfb=Math.round(performance.now()-t0);rstatus("hgResultMsg",tr("gen_ttfb",{ms:ttfb}));}playPCM16(value,sr);hg.parts.push(value);}}
+      await readSSE(rd,(ev)=>{
+        if(ev.pcm){
+          const u8=b64ToBytes(ev.pcm);
+          if(ttfb===null){ttfb=Math.round(performance.now()-t0);rstatus("hgResultMsg",tr("gen_ttfb",{ms:ttfb}));}
+          playPCM16(u8,sr); hg.parts.push(u8);
+        }
+      });
       if(hg.parts.length){ hg.wav=buildWav(hg.parts,sr);
         $("hgPlayer").src=URL.createObjectURL(hg.wav); $("hgDl").disabled=false;
         rstatus("hgResultMsg",tr("gen_done",{s:Math.round(hg.parts.reduce((s,a)=>s+a.byteLength,0)/2/sr),ms:ttfb}));
