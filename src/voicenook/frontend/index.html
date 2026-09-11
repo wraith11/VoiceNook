@@ -364,6 +364,22 @@ function b64ToBytes(b64){
   for(let i=0;i<bin.length;i++) u8[i]=bin.charCodeAt(i);
   return u8;
 }
+async function readSSE(reader, onData){
+  const dec=new TextDecoder(); let buf="";
+  while(true){
+    const{done,value}=await reader.read(); if(done)break;
+    buf+=dec.decode(value,{stream:true});
+    let i;
+    while((i=buf.indexOf("\n\n"))!==-1){
+      const block=buf.slice(0,i); buf=buf.slice(i+2);
+      for(const line of block.split("\n")){
+        if(line.startsWith("data: ")){
+          try{ const ev=JSON.parse(line.slice(6)); if(ev) onData(ev); }catch(e){}
+        }
+      }
+    }
+  }
+}
 function triggerDownload(blob,name){
   const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=name; a.click();
 }
