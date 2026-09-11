@@ -359,6 +359,11 @@ function buildWav(parts,sr){
   for(let i=0;i<pcm.length;i++)dv.setInt16(44+i*2,pcm[i],true);
   return new Blob([buf],{type:"audio/wav"});
 }
+function b64ToBytes(b64){
+  const bin=atob(b64), u8=new Uint8Array(bin.length);
+  for(let i=0;i<bin.length;i++) u8[i]=bin.charCodeAt(i);
+  return u8;
+}
 function triggerDownload(blob,name){
   const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=name; a.click();
 }
