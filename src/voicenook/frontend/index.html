@@ -252,7 +252,7 @@ const T={
     mdl_loaded_vox:"VoxCPM2 geladen",mdl_idle_vox:"VoxCPM2 standby",
     mdl_loaded_higgs:"Higgs v3 geladen",mdl_idle_higgs:"Higgs v3 standby",
     load:"Laden",unload:"Entladen",desc_hint:"Beschreibung (optional)",desc_saved:"Beschreibung für '{name}' gespeichert.",
-    renamed:"Stimme '{name}' zu '{newName}' umbenannt."},
+    vox_loading:"VoxCPM2 lädt…",renamed:"Stimme '{name}' zu '{newName}' umbenannt."},
   en:{tab_vox:"VoxCPM2",tab_higgs:"Higgs v3",tab_lib:"Voice Library",mode:"Mode",
     mode_design:"Voice Design (description only)",mode_ref:"Clone (Reference + description)",
     mode_high:"Clone (High similarity, no description)",desc:"Voice description (English)",
@@ -274,7 +274,7 @@ const T={
     mdl_loaded_vox:"VoxCPM2 loaded",mdl_idle_vox:"VoxCPM2 standby",
     mdl_loaded_higgs:"Higgs v3 loaded",mdl_idle_higgs:"Higgs v3 standby",
     load:"Load",unload:"Unload",desc_hint:"Description (optional)",desc_saved:"Description saved for '{name}'.",
-    renamed:"Voice '{name}' renamed to '{newName}'."}
+    vox_loading:"VoxCPM2 loading…",renamed:"Voice '{name}' renamed to '{newName}'."}
 };
 function tr(key,params){
   let s=(T[CFG.lang]||T.de)[key]||key;
@@ -423,23 +423,24 @@ function setHgStatus(state){
   else if(state==="disabled"){$("hgStatusTxt").textContent=tr("hg_disabled");el.title="";}
   else{$("hgStatusTxt").textContent=tr("mdl_idle_higgs");el.title=tr("load");}
 }
-function setVoxStatus(){
+function setVoxStatus(state){
   const el=$("voxStatus");
-  el.classList.toggle("on",voxLoaded);
-  $("voxStatusTxt").textContent=voxLoaded?tr("mdl_loaded_vox"):tr("mdl_idle_vox");
-  el.title=voxLoaded?tr("unload"):tr("load");
+  el.classList.remove("on");
+  if(state==="loading"){ $("voxStatusTxt").textContent=tr("vox_loading"); el.title=""; }
+  else if(state==="active"){ el.classList.add("on"); $("voxStatusTxt").textContent=tr("mdl_loaded_vox"); el.title=tr("unload"); }
+  else { $("voxStatusTxt").textContent=tr("mdl_idle_vox"); el.title=tr("load"); }
 }
 async function pollModels(){
   try{
     const j=await(await fetch("/api/models")).json();
     voxLoaded=!!j.vox_loaded; hgLoaded=!!j.higgs_loaded;
-    setVoxStatus(); setHgStatus(hgLoaded?"active":"idle");
-  }catch(e){ setVoxStatus(); setHgStatus("idle"); }
+    setVoxStatus(voxLoaded?"active":"idle"); setHgStatus(hgLoaded?"active":"idle");
+  }catch(e){ setVoxStatus("idle"); setHgStatus("idle"); }
 }
 $("voxStatus").onclick=async()=>{
   try{
     if(voxLoaded){ await fetch("/api/models/vox/unload",{method:"POST"}); }
-    else { await fetch("/api/models/vox/load",{method:"POST"}); }
+    else { setVoxStatus("loading"); await fetch("/api/models/vox/load",{method:"POST"}); }
     pollModels();
   }catch(e){rstatus("voxResultMsg",tr("error",{msg:e.message}),false);}
 };
