@@ -28,7 +28,7 @@
   .tag{display:inline-block;background:var(--panel2);border:1px solid var(--line);border-radius:5px;padding:.1rem .45rem;font-size:.72rem;margin:.15rem .1rem;color:var(--mut)}
   .hibadge{display:inline-flex;align-items:center;gap:.3rem;color:var(--err);font-size:.72rem;cursor:default}
   .hibadge .xcircle{display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;border-radius:50%;border:1.5px solid var(--err);color:var(--err);font-size:.65rem;line-height:1}
-  .libdesc{flex:1;min-width:140px}
+  .libdesc{flex:1;min-width:140px;opacity:.65;font-size:.85rem}
   /* Reftext-Button ohne Rahmen; Klick blendet Reftext in eigener Zeile ein */
   .refrow{margin:0 0 .3rem}
   .refbtn{background:none;border:none;color:var(--acc);cursor:pointer;font-size:.75rem;padding:0;text-decoration:underline;text-underline-offset:2px}
@@ -212,8 +212,8 @@
     <div class="card">
       <h3 data-i18n="existing">Vorhandene Stimmen</h3>
       <label data-i18n="testsentence">Testsatz für die Vorschau</label>
-      <input type="text" id="testSentence" style="width:100%" value="Hallo, das ist ein Test meiner Stimme.">
-      <div id="libList" style="margin-top:.4rem"><p class="hint">Lade…</p></div>
+      <input type="text" id="testSentence" style="width:50%;min-width:180px" value="Hallo, das ist ein Test meiner Stimme.">
+      <div id="libList" style="margin-top:1.2rem;border-top:2px solid var(--line);padding-top:1.2rem"><p class="hint">Lade…</p></div>
     </div>
   </div>
 </div>
@@ -359,6 +359,27 @@ function buildWav(parts,sr){
   for(let i=0;i<pcm.length;i++)dv.setInt16(44+i*2,pcm[i],true);
   return new Blob([buf],{type:"audio/wav"});
 }
+function b64ToBytes(b64){
+  const bin=atob(b64), u8=new Uint8Array(bin.length);
+  for(let i=0;i<bin.length;i++) u8[i]=bin.charCodeAt(i);
+  return u8;
+}
+async function readSSE(reader, onData){
+  const dec=new TextDecoder(); let buf="";
+  while(true){
+    const{done,value}=await reader.read(); if(done)break;
+    buf+=dec.decode(value,{stream:true});
+    let i;
+    while((i=buf.indexOf("\n\n"))!==-1){
+      const block=buf.slice(0,i); buf=buf.slice(i+2);
+      for(const line of block.split("\n")){
+        if(line.startsWith("data: ")){
+          try{ const ev=JSON.parse(line.slice(6)); if(ev) onData(ev); }catch(e){}
+        }
+      }
+    }
+  }
+}
 function triggerDownload(blob,name){
   const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=name; a.click();
 }
@@ -484,8 +505,13 @@ $("genBtn").onclick=async()=>{
       rstatus("voxResultMsg",tr("gen_only_done",{s:Math.round(ab.byteLength/2/sr)}));
     } else {
       const rd=r.body.getReader();
-      while(true){const{done,value}=await rd.read();if(done)break;
-        if(value&&value.byteLength){if(ttfb===null){ttfb=Math.round(performance.now()-t0);rstatus("voxResultMsg",tr("gen_ttfb",{ms:ttfb}));}playPCM16(value,sr);vox.parts.push(value);}}
+      await readSSE(rd,(ev)=>{
+        if(ev.pcm){
+          const u8=b64ToBytes(ev.pcm);
+          if(ttfb===null){ttfb=Math.round(performance.now()-t0);rstatus("voxResultMsg",tr("gen_ttfb",{ms:ttfb}));}
+          playPCM16(u8,sr); vox.parts.push(u8);
+        }
+      });
       if(vox.parts.length){ vox.wav=buildWav(vox.parts,sr);
         $("voxPlayer").src=URL.createObjectURL(vox.wav);
         $("voxDl").disabled=false; $("saveGenBtn").disabled=false;
@@ -583,8 +609,13 @@ $("hgGenBtn").onclick=async()=>{
       rstatus("hgResultMsg",tr("gen_only_done",{s:Math.round(ab.byteLength/2/sr)}));
     } else {
       const rd=r.body.getReader();
-      while(true){const{done,value}=await rd.read();if(done)break;
-        if(value&&value.byteLength){if(ttfb===null){ttfb=Math.round(performance.now()-t0);rstatus("hgResultMsg",tr("gen_ttfb",{ms:ttfb}));}playPCM16(value,sr);hg.parts.push(value);}}
+      await readSSE(rd,(ev)=>{
+        if(ev.pcm){
+          const u8=b64ToBytes(ev.pcm);
+          if(ttfb===null){ttfb=Math.round(performance.now()-t0);rstatus("hgResultMsg",tr("gen_ttfb",{ms:ttfb}));}
+          playPCM16(u8,sr); hg.parts.push(u8);
+        }
+      });
       if(hg.parts.length){ hg.wav=buildWav(hg.parts,sr);
         $("hgPlayer").src=URL.createObjectURL(hg.wav); $("hgDl").disabled=false;
         rstatus("hgResultMsg",tr("gen_done",{s:Math.round(hg.parts.reduce((s,a)=>s+a.byteLength,0)/2/sr),ms:ttfb}));

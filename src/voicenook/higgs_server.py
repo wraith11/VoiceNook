@@ -6,6 +6,8 @@
 import io
 import os
 import re
+import json
+import base64
 import threading
 import time
 import warnings
@@ -177,14 +179,15 @@ def synthesize_stream(body: dict):
             for i, seg in enumerate(split_segments(text)):
                 print(f"[seg {i}] {len(seg)} Zeichen", flush=True)
                 for chunk in sess.stream_turn(seg, **kw):
-                    yield audio_float_to_int16(chunk).tobytes()
+                    payload = audio_float_to_int16(chunk).tobytes()
+                    yield "data: " + json.dumps({"pcm": base64.b64encode(payload).decode()}) + "\n\n"
         except Exception as e:
             import traceback
             print("ERROR:", flush=True)
             traceback.print_exc()
 
     return StreamingResponse(
-        gen(), media_type="application/octet-stream",
+        gen(), media_type="text/event-stream",
         headers={"X-Sample-Rate": str(SR)},
     )
 

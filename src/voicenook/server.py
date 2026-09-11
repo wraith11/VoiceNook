@@ -33,6 +33,8 @@ import aiofiles
 from huggingface_hub import snapshot_download
 import asyncio
 import argparse
+import json
+import base64
 import ftfy
 
 from .generator import VoxCPM2Generator
@@ -1186,13 +1188,13 @@ async def stream_speech(request: SpeechRequest):
                 payload = audio_float_to_int16(chunk).tobytes()
                 _mark_first_byte(job)
                 record_audio_chunk(job, chunk)
-                yield payload
+                yield "data: " + json.dumps({"pcm": base64.b64encode(payload).decode()}) + "\n\n"
         finally:
             finish_generation_job(job)
 
     return StreamingResponse(
         audio_stream(),
-        media_type="application/octet-stream",
+        media_type="text/event-stream",
         headers={"X-Sample-Rate": str(SAMPLE_RATE)},
     )
 
