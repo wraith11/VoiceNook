@@ -423,23 +423,24 @@ function setHgStatus(state){
   else if(state==="disabled"){$("hgStatusTxt").textContent=tr("hg_disabled");el.title="";}
   else{$("hgStatusTxt").textContent=tr("mdl_idle_higgs");el.title=tr("load");}
 }
-function setVoxStatus(){
+function setVoxStatus(state){
   const el=$("voxStatus");
-  el.classList.toggle("on",voxLoaded);
-  $("voxStatusTxt").textContent=voxLoaded?tr("mdl_loaded_vox"):tr("mdl_idle_vox");
-  el.title=voxLoaded?tr("unload"):tr("load");
+  el.classList.remove("on");
+  if(state==="loading"){ $("voxStatusTxt").textContent=tr("vox_loading"); el.title=""; }
+  else if(state==="active"){ el.classList.add("on"); $("voxStatusTxt").textContent=tr("mdl_loaded_vox"); el.title=tr("unload"); }
+  else { $("voxStatusTxt").textContent=tr("mdl_idle_vox"); el.title=tr("load"); }
 }
 async function pollModels(){
   try{
     const j=await(await fetch("/api/models")).json();
     voxLoaded=!!j.vox_loaded; hgLoaded=!!j.higgs_loaded;
-    setVoxStatus(); setHgStatus(hgLoaded?"active":"idle");
-  }catch(e){ setVoxStatus(); setHgStatus("idle"); }
+    setVoxStatus(voxLoaded?"active":"idle"); setHgStatus(hgLoaded?"active":"idle");
+  }catch(e){ setVoxStatus("idle"); setHgStatus("idle"); }
 }
 $("voxStatus").onclick=async()=>{
   try{
     if(voxLoaded){ await fetch("/api/models/vox/unload",{method:"POST"}); }
-    else { await fetch("/api/models/vox/load",{method:"POST"}); }
+    else { setVoxStatus("loading"); await fetch("/api/models/vox/load",{method:"POST"}); }
     pollModels();
   }catch(e){rstatus("voxResultMsg",tr("error",{msg:e.message}),false);}
 };
