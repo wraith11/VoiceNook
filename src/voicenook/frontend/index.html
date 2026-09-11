@@ -644,7 +644,7 @@ async function testVoice(name){
     if(!r.ok){let m=r.statusText;try{m=(await r.json()).detail||m;}catch(e){}throw new Error(m);}
     const sr=Number(r.headers.get("X-Sample-Rate"))||48000;
     const rd=r.body.getReader();
-    while(true){const{done,value}=await rd.read();if(done)break; if(value&&value.byteLength)playPCM16(value,sr);}
+    await readSSE(rd,(ev)=>{ if(ev.pcm) playPCM16(b64ToBytes(ev.pcm),sr); });
     rstatus("libMsg",tr("test_play"));
   }catch(e){rstatus("libMsg",tr("error",{msg:e.message}),false);}
 }
